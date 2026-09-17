@@ -13,7 +13,7 @@ import { probeOpenClaw } from "./openclaw/capabilities.js";
 import type { CommandOptions } from "./openclaw/process.js";
 import { buildReceipt } from "./receipt.js";
 import { stableStringify } from "./stable-json.js";
-import { type WriteResult, writeAtomicDirectory } from "./writer.js";
+import { type OutputContent, type WriteResult, writeAtomicDirectory } from "./writer.js";
 
 function errorFromUnknown(value: unknown): Error {
   return value instanceof Error
@@ -69,14 +69,16 @@ async function commitExport(params: {
   requireComplete?: boolean;
   trajectory: AtifTrajectory;
   receipt: ExportReceipt;
+  mediaFiles: ReadonlyMap<string, Buffer>;
   signal?: AbortSignal;
 }): Promise<ExportResult> {
   validateAtifTrajectory(params.trajectory);
   if (params.requireComplete && params.receipt.status !== "complete")
     throw new Error("Export is partial and --require-complete was requested");
-  const files = new Map([
+  const files = new Map<string, OutputContent>([
     ["trajectory.json", stableStringify(params.trajectory)],
     ["receipt.json", stableStringify(params.receipt)],
+    ...params.mediaFiles,
   ]);
   const writes = await writeAtomicDirectory(
     params.output,
@@ -141,7 +143,7 @@ export async function exportOpenClawFamily(options: ExportOptions): Promise<Expo
       command: options.command,
     });
     const family = normalizeFamily(captured);
-    const mapped = mapFamilyToAtif(family);
+    const mapped = await mapFamilyToAtif(family);
     const receipt = buildReceipt({
       family,
       trajectory: mapped.trajectory,
@@ -155,6 +157,7 @@ export async function exportOpenClawFamily(options: ExportOptions): Promise<Expo
       requireComplete: options.requireComplete,
       trajectory: mapped.trajectory,
       receipt,
+      mediaFiles: mapped.mediaFiles,
       signal: options.command?.signal,
     });
     if (options.keepSourceBundles) result.sourceBundleRoot = stagingRoot;
@@ -191,7 +194,7 @@ export async function convertOpenClawBundles(options: {
 }): Promise<ExportResult> {
   const captured = await loadCapturedFamilyFromGraph(options.graph, options.bundleRoot);
   const family = normalizeFamily(captured);
-  const mapped = mapFamilyToAtif(family);
+  const mapped = await mapFamilyToAtif(family);
   const receipt = buildReceipt({
     family,
     trajectory: mapped.trajectory,
@@ -204,6 +207,7 @@ export async function convertOpenClawBundles(options: {
     requireComplete: options.requireComplete,
     trajectory: mapped.trajectory,
     receipt,
+    mediaFiles: mapped.mediaFiles,
     signal: options.signal,
   });
 }

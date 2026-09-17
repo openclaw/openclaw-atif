@@ -77,8 +77,8 @@ async function buildFamily(
 
 describe("mapFamilyToAtif", () => {
   it("maps a recursive subagent family with deterministic IDs and own metrics", async () => {
-    const first = mapFamilyToAtif(await buildFamily());
-    const second = mapFamilyToAtif(await buildFamily());
+    const first = await mapFamilyToAtif(await buildFamily());
+    const second = await mapFamilyToAtif(await buildFamily());
     expect(first.trajectory.trajectory_id).toBe(second.trajectory.trajectory_id);
     const child = first.trajectory.subagent_trajectories?.[0];
     expect(child?.session_id).toBe("child-session");
@@ -95,21 +95,21 @@ describe("mapFamilyToAtif", () => {
   });
 
   it("reports metrics for captured nodes that ATIF does not recursively embed", async () => {
-    const result = mapFamilyToAtif(await buildFamily({ relationshipKind: "visible-child" }));
+    const result = await mapFamilyToAtif(await buildFamily({ relationshipKind: "visible-child" }));
     expect(result.trajectory.subagent_trajectories).toBeUndefined();
     expect(result.nodeMetrics.size).toBe(2);
     expect(result.nodeMetrics.get("agent:main:subagent:child")?.total_prompt_tokens).toBe(3);
   });
 
   it("attaches a subagent reference only to the proven result event", async () => {
-    const result = mapFamilyToAtif(await buildFamily({ replayedResult: true }));
+    const result = await mapFamilyToAtif(await buildFamily({ replayedResult: true }));
     const results = result.trajectory.steps.flatMap((step) => step.observation?.results ?? []);
     expect(results.filter((item) => item.subagent_trajectory_ref !== undefined)).toHaveLength(1);
     expect(results.at(-1)?.subagent_trajectory_ref).toBeUndefined();
   });
 
   it("embeds listing-only children without fabricating a tool reference", async () => {
-    const result = mapFamilyToAtif(await buildFamily({ listingOnly: true }));
+    const result = await mapFamilyToAtif(await buildFamily({ listingOnly: true }));
     const spawnStep = result.trajectory.steps.find((step) => step.tool_calls?.length);
     expect(spawnStep?.observation?.results[0]?.subagent_trajectory_ref).toBeUndefined();
     expect(result.diagnostics.some((item) => item.code === "subagent-reference-unresolved")).toBe(
@@ -118,7 +118,7 @@ describe("mapFamilyToAtif", () => {
   });
 
   it("labels ACP children without claiming upstream internals", async () => {
-    const result = mapFamilyToAtif(await buildFamily({ childKey: "agent:main:acp:child" }));
+    const result = await mapFamilyToAtif(await buildFamily({ childKey: "agent:main:acp:child" }));
     const reference = result.trajectory.steps
       .flatMap((step) => step.observation?.results ?? [])
       .flatMap((item) => item.subagent_trajectory_ref ?? [])[0];
@@ -161,7 +161,7 @@ describe("mapFamilyToAtif", () => {
         nodes: [{ sessionKey: "agent:main:main", bundleDir: "bundle" }],
       }),
     );
-    const result = mapFamilyToAtif(
+    const result = await mapFamilyToAtif(
       normalizeFamily(await loadCapturedFamilyFromGraph(graphPath, root)),
     );
     expect(result.trajectory.steps[0]?.observation?.results[0]?.source_call_id).toBeNull();
@@ -197,7 +197,7 @@ describe("mapFamilyToAtif", () => {
         nodes: [{ sessionKey: "agent:main:main", bundleDir: "bundle" }],
       }),
     );
-    const result = mapFamilyToAtif(
+    const result = await mapFamilyToAtif(
       normalizeFamily(await loadCapturedFamilyFromGraph(graphPath, root)),
     );
     expect(result.trajectory.steps[0]?.message).toBe("");

@@ -1,0 +1,11 @@
+{
+  "schema": "openclaw-atif-bundle-graph-v1",
+  "rootKey": "agent:main:main",
+  "openclawVersion": "synthetic-media-fixture",
+  "nodes": [
+    {
+      "sessionKey": "agent:main:main",
+      "bundleDir": "root"
+    }
+  ]
+}

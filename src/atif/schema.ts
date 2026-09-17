@@ -5,15 +5,28 @@ import { ATIF_VERSION } from "../version.js";
 
 export type { JsonObject, JsonValue };
 
-export type AtifContentPart =
-  | { type: "text"; text: string }
-  | {
-      type: "image";
-      source: {
-        media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-        path: string;
-      };
-    };
+export type AtifContentPart = z.infer<typeof contentPartSchema>;
+
+const MEDIA_TYPE_ALIASES: Readonly<Record<string, string>> = {
+  "image/jpg": "image/jpeg",
+  "audio/mp3": "audio/mpeg",
+  "audio/mpga": "audio/mpeg",
+  "audio/x-mpeg": "audio/mpeg",
+  "audio/x-wav": "audio/wav",
+  "audio/wave": "audio/wav",
+  "audio/vnd.wave": "audio/wav",
+  "audio/x-m4a": "audio/mp4",
+  "audio/m4a": "audio/mp4",
+  "audio/x-aac": "audio/aac",
+  "audio/x-flac": "audio/flac",
+  "audio/x-aiff": "audio/aiff",
+};
+
+function canonicalMediaType(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const normalized = value.trim().toLowerCase();
+  return MEDIA_TYPE_ALIASES[normalized] ?? normalized;
+}
 
 export interface AtifSubagentRef {
   trajectory_id?: string;
@@ -101,15 +114,42 @@ const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   ]),
 );
 const jsonObjectSchema = z.record(z.string(), jsonValueSchema);
-const contentPartSchema = z.discriminatedUnion("type", [
+export const contentPartSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string() }).strict(),
   z
     .object({
       type: z.literal("image"),
       source: z
         .object({
-          media_type: z.enum(["image/jpeg", "image/png", "image/gif", "image/webp"]),
+          media_type: z.preprocess(
+            canonicalMediaType,
+            z.enum(["image/jpeg", "image/png", "image/gif", "image/webp"]),
+          ),
           path: z.string().min(1),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("audio"),
+      source: z
+        .object({
+          media_type: z.preprocess(
+            canonicalMediaType,
+            z.enum([
+              "audio/wav",
+              "audio/mpeg",
+              "audio/mp4",
+              "audio/aac",
+              "audio/ogg",
+              "audio/flac",
+              "audio/webm",
+              "audio/aiff",
+            ]),
+          ),
+          path: z.string().min(1),
+          duration_sec: z.number().nonnegative().optional(),
         })
         .strict(),
     })

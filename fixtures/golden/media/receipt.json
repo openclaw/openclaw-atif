@@ -1,0 +1,49 @@
+{
+  "diagnostics": [],
+  "familyMetrics": {
+    "completionTokens": 1,
+    "promptTokens": 5,
+    "steps": 2
+  },
+  "nodes": [
+    {
+      "branchCoverage": "selected-active-leaf",
+      "diagnostics": [],
+      "generationCoverage": "public-exported-generation",
+      "leafId": "leaf-1",
+      "sessionId": "media-session",
+      "sessionKey": "agent:main:main",
+      "sourceHashes": {
+        "events.jsonl": "742bfaa22e7b7102ab5befda217ea1b6dfac253e3d367ace8ee013e2dd9b3289",
+        "manifest.semantic-v1": "8600e548413573109bb2f2183b7f17fe0a50da6e082c44a8f00e18cdfbc830de",
+        "session-branch.json": "6edcac6ce92492bf9093739aaf01d567b0cea57f6f13c4fd6d4ddb57ec80bc98"
+      }
+    }
+  ],
+  "output": {
+    "trajectorySha256": "a0f7e1f74bc088aeb5e637a12321817a19d70997ec4c117ed9e7b1c4007276f8"
+  },
+  "relationships": [],
+  "root": {
+    "sessionId": "media-session",
+    "sessionKey": "agent:main:main",
+    "trajectoryId": "openclaw-c94cb688e178862b915652d9596b8902"
+  },
+  "schema": "openclaw-atif-receipt-v1",
+  "source": {
+    "bundleSchema": "openclaw-trajectory",
+    "bundleSchemaVersion": 1,
+    "listingAfterHash": "1bb70ffe1173f63cce70c98ee472021261823d04aa2f60a1a505e15c3dc16779",
+    "listingBeforeHash": "1bb70ffe1173f63cce70c98ee472021261823d04aa2f60a1a505e15c3dc16779",
+    "openclawVersion": "synthetic-media-fixture",
+    "profile": "openclaw-support-v1",
+    "redacted": true,
+    "stable": true
+  },
+  "status": "complete",
+  "validation": {
+    "harbor": "not-run-runtime",
+    "harborConformanceCommit": "74cc6312018c349c6bd2400c89a0ac4983ac1085",
+    "localAtif": true
+  }
+}

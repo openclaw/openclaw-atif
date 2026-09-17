@@ -51,6 +51,7 @@ export interface CapturedFamily {
 }
 
 export interface NormalizedNode {
+  bundleDirectory: string;
   key: string;
   sessionId: string;
   leafId: string | null;

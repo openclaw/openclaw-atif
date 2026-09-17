@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 mutation/
+.stryker-tmp/
 *.tgz
 .env
 .env.*

@@ -2,16 +2,18 @@
 set -euo pipefail
 
 ROOT="$(pwd)"
+NODE="${npm_node_execpath:-node}"
+NPM="$(command -v npm)"
 TEMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEMP_ROOT"' EXIT
 
-PACKAGE="$(npm pack --silent --pack-destination "$TEMP_ROOT" | tail -n 1)"
+PACKAGE="$("$NODE" "$NPM" pack --silent --pack-destination "$TEMP_ROOT" | tail -n 1)"
 mkdir -p "$TEMP_ROOT/install"
-npm install --silent --prefix "$TEMP_ROOT/install" "$TEMP_ROOT/$PACKAGE"
+"$NODE" "$NPM" install --silent --prefix "$TEMP_ROOT/install" "$TEMP_ROOT/$PACKAGE"
 CLI="$TEMP_ROOT/install/node_modules/.bin/openclaw-atif"
-"$CLI" --help >/dev/null
-"$CLI" --version >/dev/null
-"$CLI" convert \
+"$NODE" "$CLI" --help >/dev/null
+"$NODE" "$CLI" --version >/dev/null
+"$NODE" "$CLI" convert \
   --graph "$ROOT/fixtures/bundles/legacy-jsonl/graph.json" \
   --bundle-root "$ROOT/fixtures/bundles/legacy-jsonl" \
   --output "$TEMP_ROOT/output" \
@@ -20,3 +22,13 @@ test -f "$TEMP_ROOT/output/trajectory.json"
 test -f "$TEMP_ROOT/output/receipt.json"
 test "$(stat -c '%a' "$TEMP_ROOT/output")" = "700"
 test "$(stat -c '%a' "$TEMP_ROOT/output/trajectory.json")" = "600"
+
+cp -R "$ROOT/fixtures/bundles/media" "$TEMP_ROOT/input"
+"$NODE" "$CLI" convert \
+  --graph "$TEMP_ROOT/input/graph.json" \
+  --bundle-root "$TEMP_ROOT/input" \
+  --output "$TEMP_ROOT/media-output" \
+  --require-complete --json >/dev/null
+rm -rf "$TEMP_ROOT/input"
+"$NODE" "$ROOT/scripts/check-media-output.mjs" "$TEMP_ROOT/media-output"
+test "$(stat -c '%a' "$TEMP_ROOT/media-output/media")" = "700"

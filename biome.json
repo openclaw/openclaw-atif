@@ -1,7 +1,14 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
   "files": {
-    "includes": ["**", "!!dist", "!!coverage", "!!node_modules", "!!fixtures/golden"]
+    "includes": [
+      "**",
+      "!!dist",
+      "!!coverage",
+      "!!node_modules",
+      "!!fixtures/golden",
+      "!!.stryker-tmp"
+    ]
   },
   "formatter": {
     "enabled": true,

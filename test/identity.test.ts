@@ -14,7 +14,7 @@ describe("trajectoryId", () => {
     expect(trajectoryId({ ...base, leafId: "other" })).not.toBe(trajectoryId(base));
     expect(trajectoryId({ ...base, profile: "other" })).not.toBe(trajectoryId(base));
     expect(trajectoryId({ ...base, leafId: null })).toBe(
-      "openclaw-ece5935d5de4fefb87a361f1856c4db0",
+      "openclaw-6374fc29ee2d69624a17cf461e23a165",
     );
   });
 });

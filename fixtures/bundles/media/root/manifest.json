@@ -1,0 +1,16 @@
+{
+  "traceSchema": "openclaw-trajectory",
+  "schemaVersion": 1,
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "traceId": "media-session",
+  "sessionId": "media-session",
+  "sessionKey": "agent:main:main",
+  "workspaceDir": "$WORKSPACE_DIR",
+  "leafId": "leaf-1",
+  "eventCount": 5,
+  "runtimeEventCount": 1,
+  "transcriptEventCount": 4,
+  "sourceFiles": {
+    "session": "agent:main:main"
+  }
+}

@@ -133,7 +133,7 @@ export function normalizeFamily(captured: CapturedFamily): SessionFamilySnapshot
       if (!["native-subagent", "acp-child"].includes(relationship.kind)) {
         diagnostics.push({
           code: "relationship-not-represented-in-atif",
-          message: `ATIF-v1.7 has no recursive embedding contract for ${relationship.kind}`,
+          message: `ATIF-v1.8 has no recursive embedding contract for ${relationship.kind}`,
           nodeKey: key,
         });
       }
@@ -147,6 +147,7 @@ export function normalizeFamily(captured: CapturedFamily): SessionFamilySnapshot
       }
     }
     nodes.set(key, {
+      bundleDirectory: source.bundle.directory,
       key,
       sessionId: source.sessionId,
       leafId: source.bundle.manifest.leafId,

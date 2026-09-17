@@ -42,9 +42,12 @@ The output directory contains:
 ```text
 trajectory.json
 receipt.json
+media/          # retained image/audio files, when present
 ```
 
-`trajectory.json` is ATIF-v1.7. `receipt.json` states whether the export is complete or partial and lists source limits, redaction, unresolved relationships, hashes, and metric scopes.
+`trajectory.json` is ATIF-v1.8. `receipt.json` states whether the export is complete or partial and lists source limits, redaction, unresolved relationships, hashes, and metric scopes.
+
+Supported bundle-local media is copied into `media/` and referenced by relative paths. Keep this directory beside `trajectory.json`. Retention is limited to 64 files per family and 32 MiB per file. Remote references are not downloaded. Missing, unsafe, or unsupported media makes the output partial.
 
 Use `--require-complete` when partial output is not acceptable:
 

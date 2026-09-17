@@ -18,6 +18,7 @@ import type {
 import { compareCodeUnits } from "../ordering.js";
 import { ATIF_VERSION } from "../version.js";
 import { trajectoryId } from "./identity.js";
+import { MediaStore, mediaKind } from "./media.js";
 import {
   type AtifAgent,
   type AtifContentPart,
@@ -34,22 +35,26 @@ export interface MappingResult {
   trajectory: AtifTrajectory;
   diagnostics: Diagnostic[];
   nodeMetrics: ReadonlyMap<string, AtifFinalMetrics>;
+  mediaFiles: ReadonlyMap<string, Buffer>;
 }
 
 type StepState = {
   steps: AtifStep[];
   ownerByCallId: Map<string, AtifStep>;
   diagnostics: Diagnostic[];
+  media: MediaStore;
   modelName?: string;
   reasoningEffort?: string;
 };
 
-function contentParts(
+async function contentParts(
   value: unknown,
-  diagnostics: Diagnostic[],
-  nodeKey: string,
+  state: StepState,
+  node: NormalizedNode,
   eventId?: string,
-): string | AtifContentPart[] {
+): Promise<string | AtifContentPart[]> {
+  const { diagnostics } = state;
+  const nodeKey = node.key;
   if (typeof value === "string") return value;
   if (!Array.isArray(value)) return "";
   const parts: AtifContentPart[] = [];
@@ -75,17 +80,21 @@ function contentParts(
           eventId,
         });
     }
-    if (type === "image") {
-      diagnostics.push({
-        code: "image-content-omitted",
-        message: "The image was omitted because the export does not copy source assets",
+    const kind = mediaKind(type);
+    if (kind) {
+      const part = await state.media.part(
+        item,
+        kind,
+        node.bundleDirectory,
+        diagnostics,
         nodeKey,
         eventId,
-      });
+      );
+      if (part) parts.push(part);
     }
     if (
       type !== "text" &&
-      type !== "image" &&
+      !kind &&
       !["reasoning", "thinking", "analysis", "toolcall", "tool_call"].includes(type)
     ) {
       diagnostics.push({
@@ -214,12 +223,12 @@ function pushStep(state: StepState, step: Omit<AtifStep, "step_id">): AtifStep {
   return value;
 }
 
-function messageStep(
+async function messageStep(
   event: TrajectoryEvent,
   node: NormalizedNode,
   state: StepState,
   calls: Map<string, AtifToolCall[]>,
-): void {
+): Promise<void> {
   const message = asRecord(event.data?.message);
   if (!message) {
     state.diagnostics.push({
@@ -233,7 +242,7 @@ function messageStep(
   if (event.type === "user.message") {
     pushStep(state, {
       source: "user",
-      message: contentParts(message.content, state.diagnostics, node.key, event.entryId),
+      message: await contentParts(message.content, state, node, event.entryId),
       ...(timestamp(event) ? { timestamp: timestamp(event) } : {}),
       extra: { openclaw: { entry_id: event.entryId ?? null, event_type: event.type } },
     });
@@ -248,7 +257,7 @@ function messageStep(
     state.reasoningEffort;
   const step = pushStep(state, {
     source: "agent",
-    message: contentParts(message.content, state.diagnostics, node.key, event.entryId),
+    message: await contentParts(message.content, state, node, event.entryId),
     ...(timestamp(event) ? { timestamp: timestamp(event) } : {}),
     ...(stepModel ? { model_name: stepModel } : {}),
     ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
@@ -278,13 +287,13 @@ function messageStep(
   }
 }
 
-function resultContent(
+async function resultContent(
   message: Record<string, unknown>,
   state: StepState,
   node: NormalizedNode,
   event: TrajectoryEvent,
-): string | AtifContentPart[] | null {
-  const content = contentParts(message.content, state.diagnostics, node.key, event.entryId);
+): Promise<string | AtifContentPart[] | null> {
+  const content = await contentParts(message.content, state, node, event.entryId);
   return Array.isArray(content) || content !== "" ? content : null;
 }
 
@@ -292,19 +301,19 @@ function spawnResultKey(callId: string, eventId: string): string {
   return `${callId}\u0000${eventId}`;
 }
 
-function resultStep(
+async function resultStep(
   event: TrajectoryEvent,
   node: NormalizedNode,
   state: StepState,
   refsByCall: ReadonlyMap<string, AtifSubagentRefLike[]>,
-): void {
+): Promise<void> {
   const message = asRecord(event.data?.message);
   if (!message) return;
   const callId = readNonBlankString(message.toolCallId) ?? readNonBlankString(message.tool_call_id);
   const owner = callId ? state.ownerByCallId.get(callId) : undefined;
   const result: AtifObservationResult = {
     source_call_id: owner && callId ? callId : null,
-    content: resultContent(message, state, node, event),
+    content: await resultContent(message, state, node, event),
     extra: {
       openclaw: {
         entry_id: event.entryId ?? null,
@@ -343,14 +352,17 @@ type AtifSubagentRefLike = {
   extra?: JsonObject;
 };
 
-function contextStep(event: TrajectoryEvent, node: NormalizedNode, state: StepState): void {
+async function contextStep(
+  event: TrajectoryEvent,
+  node: NormalizedNode,
+  state: StepState,
+): Promise<void> {
   const data = toJsonObject(event.data) ?? {};
-  let message = "";
+  let message: string | AtifContentPart[] = "";
   if (event.type === "session.compaction" || event.type === "session.branch_summary")
     message = readString(event.data?.summary) ?? "";
   if (event.type === "session.custom_message") {
-    const content = contentParts(event.data?.content, state.diagnostics, node.key, event.entryId);
-    message = typeof content === "string" ? content : "";
+    message = await contentParts(event.data?.content, state, node, event.entryId);
   }
   if (event.type === "context.compiled") message = readString(event.data?.systemPrompt) ?? "";
   pushStep(state, {
@@ -479,13 +491,14 @@ function runtimeProvenance(node: NormalizedNode): JsonObject {
   return { event_type_counts: counts, terminal_events: terminal };
 }
 
-function buildNode(params: {
+async function buildNode(params: {
   family: SessionFamilySnapshot;
   node: NormalizedNode;
   visiting: Set<string>;
   diagnostics: Diagnostic[];
   nodeMetrics: Map<string, AtifFinalMetrics>;
-}): AtifTrajectory {
+  media: MediaStore;
+}): Promise<AtifTrajectory> {
   if (params.visiting.has(params.node.key))
     throw new Error(`Session family contains a cycle at ${params.node.key}`);
   params.visiting.add(params.node.key);
@@ -500,15 +513,10 @@ function buildNode(params: {
         pair.child !== undefined,
     )
     .sort((left, right) => compareCodeUnits(left.child.key, right.child.key));
-  const children = childPairs.map(({ child }) =>
-    buildNode({
-      family: params.family,
-      node: child,
-      visiting: params.visiting,
-      diagnostics: params.diagnostics,
-      nodeMetrics: params.nodeMetrics,
-    }),
-  );
+  const children: AtifTrajectory[] = [];
+  for (const { child } of childPairs) {
+    children.push(await buildNode({ ...params, node: child }));
+  }
   const childTrajectoryByKey = new Map(
     childPairs.map((pair, index) => [pair.child.key, children[index]]),
   );
@@ -530,6 +538,7 @@ function buildNode(params: {
     steps: [],
     ownerByCallId: new Map(),
     diagnostics: [],
+    media: params.media,
   };
   const calls = callsByAssistantEntry(params.node.transcriptEvents, params.node, state);
   const events = [
@@ -556,9 +565,9 @@ function buildNode(params: {
       if (effort) state.reasoningEffort = effort;
     }
     if (event.type === "user.message" || event.type === "assistant.message")
-      messageStep(event, params.node, state, calls);
-    else if (event.type === "tool.result") resultStep(event, params.node, state, refsByCall);
-    else if (shouldMapSystemEvent(event.type)) contextStep(event, params.node, state);
+      await messageStep(event, params.node, state, calls);
+    else if (event.type === "tool.result") await resultStep(event, params.node, state, refsByCall);
+    else if (shouldMapSystemEvent(event.type)) await contextStep(event, params.node, state);
   }
   if (state.steps.length === 0) {
     pushStep(state, {
@@ -611,22 +620,31 @@ function buildNode(params: {
   };
 }
 
-export function mapFamilyToAtif(family: SessionFamilySnapshot): MappingResult {
+export async function mapFamilyToAtif(family: SessionFamilySnapshot): Promise<MappingResult> {
   const root = family.nodes.get(family.rootKey);
   if (!root) throw new Error("Session family root is missing");
   const diagnostics: Diagnostic[] = [...family.diagnostics];
   const nodeMetrics = new Map<string, AtifFinalMetrics>();
-  const trajectory = buildNode({
+  const media = new MediaStore();
+  const trajectory = await buildNode({
     family,
     node: root,
     visiting: new Set(),
     diagnostics,
     nodeMetrics,
+    media,
   });
-  for (const node of family.nodes.values()) {
+  for (const node of [...family.nodes.values()].sort((a, b) => compareCodeUnits(a.key, b.key))) {
     if (nodeMetrics.has(node.key)) continue;
-    buildNode({ family, node, visiting: new Set(), diagnostics, nodeMetrics });
+    await buildNode({
+      family,
+      node,
+      visiting: new Set(),
+      diagnostics,
+      nodeMetrics,
+      media: new MediaStore(),
+    });
   }
   validateAtifTrajectory(trajectory);
-  return { trajectory, diagnostics, nodeMetrics };
+  return { trajectory, diagnostics, nodeMetrics, mediaFiles: media.files };
 }

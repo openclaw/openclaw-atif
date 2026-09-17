@@ -10,7 +10,7 @@ interface ParsedArgs {
 
 const HELP = `openclaw-atif ${PACKAGE_VERSION}
 
-Export OpenClaw session families as Harbor ATIF-v1.7.
+Export OpenClaw session families as Harbor ATIF-v1.8.
 
 Usage:
   openclaw-atif export (--session-key <key> | --session-id <id>) --output <dir> [options]

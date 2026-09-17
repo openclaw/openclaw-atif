@@ -9,7 +9,7 @@ import { compareCodeUnits } from "./ordering.js";
 import { stableStringify } from "./stable-json.js";
 import { OPENCLAW_BUNDLE_SCHEMA, OPENCLAW_BUNDLE_VERSION } from "./version.js";
 
-const HARBOR_CONFORMANCE_COMMIT = "c3ce0c60bbd2fd1888b327efcc880dbd86d8b7cf";
+const HARBOR_CONFORMANCE_COMMIT = "74cc6312018c349c6bd2400c89a0ac4983ac1085";
 
 function addMetrics(total: MetricTotals, metrics: AtifFinalMetrics): void {
   total.steps += metrics.total_steps ?? 0;

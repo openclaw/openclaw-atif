@@ -36,7 +36,7 @@
     }
   ],
   "output": {
-    "trajectorySha256": "db2e8b041782006af3e4e7e8f3fa42815c0ac090de17eccdef78c1421066c425"
+    "trajectorySha256": "fc83bb20d7a20d5b18355e69d5d490d1532cd6122419a0f4a5ab4c8d1830262c"
   },
   "relationships": [
     {
@@ -51,7 +51,7 @@
   "root": {
     "sessionId": "sqlite-root-session",
     "sessionKey": "agent:main:main",
-    "trajectoryId": "openclaw-8a2f9f9c5c0d80c4eea0da49a0229953"
+    "trajectoryId": "openclaw-bd3d1215221e9076357f128f6d1afbf9"
   },
   "schema": "openclaw-atif-receipt-v1",
   "source": {
@@ -67,7 +67,7 @@
   "status": "complete",
   "validation": {
     "harbor": "not-run-runtime",
-    "harborConformanceCommit": "c3ce0c60bbd2fd1888b327efcc880dbd86d8b7cf",
+    "harborConformanceCommit": "74cc6312018c349c6bd2400c89a0ac4983ac1085",
     "localAtif": true
   }
 }

@@ -13,7 +13,35 @@ date: "2026-08-20"
 - `tool.result` attaches to the agent step with the exact matching tool call ID.
 - An unmatched result becomes a system observation with no source call ID and a warning.
 
-Observed empty content remains empty. The mapper does not add explanatory placeholders. Image references are omitted with diagnostics because the export does not copy source assets and must not emit dangling or machine-local paths. Unknown audio, file, or future content blocks are also omitted with explicit diagnostics, so the export is partial rather than falsely complete.
+Observed empty content remains empty. The mapper does not add explanatory placeholders. Text-only content can remain a string. Mixed text, image, and audio content uses ATIF-v1.8 `ContentPart` entries.
+
+## Media
+
+The low-level `mapFamilyToAtif` function is asynchronous because it reads referenced bundle files. Each normalized node carries its bundle directory for path resolution; this machine-local path is not written to the receipt. Mapping returns `mediaFiles` alongside the trajectory, diagnostics, and node metrics. Use `exportOpenClawFamily` or `convertOpenClawBundles` to commit the trajectory and media together.
+
+An image or audio part must have a supported media type and a source location. Map it to a matching ATIF `ImageSource` or `AudioSource` with `media_type` and `path`. The part's `type` must agree with the source's media type. Media parts cannot carry the text field, and text parts cannot carry a media source.
+
+Supported image types are `image/jpeg`, `image/png`, `image/gif`, and `image/webp`. Normalize `image/jpg` to `image/jpeg`.
+
+Supported audio types are `audio/wav`, `audio/mpeg`, `audio/mp4`, `audio/aac`, `audio/ogg`, `audio/flac`, `audio/webm`, and `audio/aiff`. Normalize common aliases to Harbor's canonical audio types, including `audio/mp3` to `audio/mpeg`. Preserve an observed, finite, non-negative `duration_sec` when supplied. Omit duration when it is unknown.
+
+The same mapping applies to user messages, assistant messages, and tool results, including image-only or audio-only content. Recognize supported source shapes, including `image_url` and `input_image`, when they declare both a media type and a location. Do not infer missing media types or invent source locations.
+
+The [export contract](2026-08-20-export-contract.md#media-retention) governs file retention and limits. Copy safe bundle-local files beside the output and rewrite their paths to retained relative paths. Preserve supported external references without fetching them.
+
+For example, a retained audio part can be represented as:
+
+```json
+{
+  "type": "audio",
+  "source": {
+    "media_type": "audio/mpeg",
+    "path": "media/<content-hash>.mp3"
+  }
+}
+```
+
+Omit unsupported, missing, unsafe, or unretained content with explicit receipt diagnostics and a partial export status. Keep the observed text and other retained parts. This includes unsupported inline base64 blocks, unknown file or future content blocks, and failed copies. Do not substitute explanatory messages for omitted source content.
 
 ## Runtime facts
 

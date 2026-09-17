@@ -227,3 +227,114 @@ await generateFamily(
   true,
 );
 await generateFamily("sqlite", "2026.8.1-beta.2", "agent:main:acp:child", "acp-child", false);
+
+// Synthetic public bundle, not a capture from a live model or OpenClaw run.
+const mediaRoot = join(bundlesRoot, "media");
+const sessionId = "media-session";
+const image = { type: "image", source: { media_type: "image/png", path: "pixel.png" } };
+const audio = {
+  type: "audio",
+  source: { media_type: "audio/x-wav", path: "sample.wav", duration_sec: 0.000125 },
+};
+await writeBundle(join(mediaRoot, "root"), "agent:main:main", sessionId, [
+  event({
+    seq: 1,
+    source: "transcript",
+    type: "user.message",
+    sessionId,
+    entryId: "u",
+    data: {
+      message: {
+        content: [
+          { type: "text", text: "Look and listen." },
+          { type: "image_url", image_url: image.source },
+          audio,
+        ],
+      },
+    },
+  }),
+  event({
+    seq: 2,
+    source: "transcript",
+    type: "assistant.message",
+    sessionId,
+    entryId: "a",
+    data: {
+      message: { content: [audio], usage: { input: 2, output: 1, cacheWrite: 3 } },
+    },
+  }),
+  event({
+    seq: 3,
+    source: "transcript",
+    type: "tool.call",
+    sessionId,
+    entryId: "a",
+    data: {
+      assistantEntryId: "a",
+      toolCallId: "read-1",
+      name: "read",
+      arguments: {},
+    },
+  }),
+  event({
+    seq: 4,
+    source: "transcript",
+    type: "tool.result",
+    sessionId,
+    entryId: "r",
+    data: {
+      message: {
+        toolCallId: "read-1",
+        toolName: "read",
+        content: [{ ...image, type: "input_image" }, audio],
+      },
+    },
+  }),
+  event({
+    seq: 5,
+    source: "runtime",
+    type: "session.ended",
+    sessionId,
+    data: { reason: "completed" },
+  }),
+]);
+await writeFile(
+  join(mediaRoot, "root", "pixel.png"),
+  Buffer.from(
+    // Generated 1x1 red RGB PNG with valid chunk CRCs.
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+    "base64",
+  ),
+);
+const wav = Buffer.alloc(46);
+wav.write("RIFF");
+wav.writeUInt32LE(38, 4);
+wav.write("WAVEfmt ", 8);
+wav.writeUInt32LE(16, 16);
+wav.writeUInt16LE(1, 20);
+wav.writeUInt16LE(1, 22);
+wav.writeUInt32LE(8000, 24);
+wav.writeUInt32LE(16000, 28);
+wav.writeUInt16LE(2, 32);
+wav.writeUInt16LE(16, 34);
+wav.write("data", 36);
+wav.writeUInt32LE(2, 40);
+await writeFile(join(mediaRoot, "root", "sample.wav"), wav);
+await writeFile(
+  join(mediaRoot, "graph.json"),
+  `${JSON.stringify(
+    {
+      schema: "openclaw-atif-bundle-graph-v1",
+      rootKey: "agent:main:main",
+      openclawVersion: "synthetic-media-fixture",
+      nodes: [{ sessionKey: "agent:main:main", bundleDir: "root" }],
+    },
+    null,
+    2,
+  )}\n`,
+);
+await convertOpenClawBundles({
+  graph: join(mediaRoot, "graph.json"),
+  bundleRoot: mediaRoot,
+  output: join(goldenRoot, "media"),
+});

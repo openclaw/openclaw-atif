@@ -11,6 +11,8 @@ export class OutputConflictError extends Error {
   }
 }
 
+export type OutputContent = string | Uint8Array;
+
 export interface WriteResult {
   path: string;
   sha256: string;
@@ -53,7 +55,7 @@ async function ensureDirectory(path: string): Promise<void> {
   if (created) await chmod(created, 0o700);
 }
 
-async function writeFreshFile(path: string, content: string): Promise<void> {
+async function writeFreshFile(path: string, content: OutputContent): Promise<void> {
   const handle = await open(path, "wx", 0o600);
   try {
     await handle.writeFile(content, "utf8");
@@ -64,7 +66,7 @@ async function writeFreshFile(path: string, content: string): Promise<void> {
   await chmod(path, 0o600);
 }
 
-function sha256(content: string): string {
+function sha256(content: OutputContent): string {
   return createHash("sha256").update(content).digest("hex");
 }
 
@@ -103,41 +105,42 @@ export async function writeAtomicFile(
   }
 }
 
-function validateOutputNames(files: ReadonlyMap<string, string>): void {
+function validOutputName(name: string): boolean {
+  if (/^media\/[0-9a-f]{64}\.[a-z0-9]+$/.test(name)) return true;
+  return (
+    !!name &&
+    name !== "." &&
+    name !== ".." &&
+    name !== "media" &&
+    !/[\\/]/.test(name) &&
+    !name.includes("\0")
+  );
+}
+
+function validateOutputNames(files: ReadonlyMap<string, OutputContent>): void {
   for (const name of files.keys()) {
-    if (!name || name === "." || name === ".." || name !== basename(name) || /[\\/]/.test(name)) {
-      throw new Error(`ATIF output name must be one basename: ${name}`);
+    if (!validOutputName(name)) {
+      throw new Error(
+        `ATIF output name must be one basename or a content-addressed media path: ${name}`,
+      );
     }
   }
 }
 
-async function directoryMatches(
-  destination: string,
-  files: ReadonlyMap<string, string>,
-): Promise<boolean> {
-  if (!(await exists(destination))) return false;
-  const destinationDetails = await lstat(destination);
-  if (!destinationDetails.isDirectory() || destinationDetails.isSymbolicLink())
-    throw new OutputConflictError(destination);
-  const names = (await readdir(destination)).sort();
-  const expected = [...files.keys()].sort();
-  if (names.length !== expected.length || names.some((name, index) => name !== expected[index]))
-    return false;
-  for (const [name, content] of files) {
-    const path = join(destination, name);
-    const details = await lstat(path);
-    if (!details.isFile() || details.isSymbolicLink()) throw new OutputConflictError(path);
-    if ((await readFile(path, "utf8")) !== content) return false;
-  }
-  return true;
+function fileHashes(files: ReadonlyMap<string, OutputContent>): Record<string, string> {
+  return Object.fromEntries([...files].map(([name, content]) => [name, sha256(content)]));
 }
 
 async function secureExistingDirectory(
   destination: string,
-  files: ReadonlyMap<string, string>,
+  files: ReadonlyMap<string, OutputContent>,
 ): Promise<void> {
   await chmod(destination, 0o700);
   for (const name of files.keys()) await chmod(join(destination, name), 0o600);
+  if ([...files.keys()].some((name) => name.startsWith("media/"))) {
+    await chmod(join(destination, "media"), 0o700);
+    await syncDirectory(join(destination, "media"));
+  }
   await syncDirectory(destination);
   await syncDirectory(dirname(destination));
 }
@@ -151,14 +154,28 @@ async function directoryMatchesHashes(
   if (!destinationDetails.isDirectory() || destinationDetails.isSymbolicLink())
     throw new OutputConflictError(destination);
   const names = (await readdir(destination)).sort();
-  const expected = Object.keys(files).sort();
+  const expected = [...new Set(Object.keys(files).map((name) => name.split("/")[0]))].sort();
   if (names.length !== expected.length || names.some((name, index) => name !== expected[index]))
     return false;
+  if (names.includes("media")) {
+    const media = join(destination, "media");
+    const details = await lstat(media);
+    if (!details.isDirectory() || details.isSymbolicLink()) throw new OutputConflictError(media);
+    const actualMedia = (await readdir(media)).map((name) => `media/${name}`).sort();
+    const expectedMedia = Object.keys(files)
+      .filter((name) => name.startsWith("media/"))
+      .sort();
+    if (
+      actualMedia.length !== expectedMedia.length ||
+      actualMedia.some((name, i) => name !== expectedMedia[i])
+    )
+      return false;
+  }
   for (const [name, digest] of Object.entries(files)) {
     const path = join(destination, name);
     const details = await lstat(path);
     if (!details.isFile() || details.isSymbolicLink()) throw new OutputConflictError(path);
-    if (sha256(await readFile(path, "utf8")) !== digest) return false;
+    if (sha256(await readFile(path)) !== digest) return false;
   }
   return true;
 }
@@ -186,11 +203,7 @@ function isDirectoryTransaction(
     Array.isArray(record.files) ||
     Object.entries(record.files).some(
       ([name, digest]) =>
-        !name ||
-        name !== basename(name) ||
-        /[\\/]/.test(name) ||
-        typeof digest !== "string" ||
-        !/^[0-9a-f]{64}$/.test(digest),
+        !validOutputName(name) || typeof digest !== "string" || !/^[0-9a-f]{64}$/.test(digest),
     )
   ) {
     return false;
@@ -242,7 +255,7 @@ async function recoverDirectory(destination: string): Promise<void> {
 async function beginDirectoryTransaction(
   destination: string,
   stage: string,
-  files: ReadonlyMap<string, string>,
+  files: ReadonlyMap<string, OutputContent>,
 ): Promise<DirectoryTransaction> {
   const id = /\.openclaw-atif-([0-9a-f-]{36})\.tmp$/.exec(basename(stage))?.[1];
   if (!id) throw new Error(`Invalid openclaw-atif staging path: ${stage}`);
@@ -252,7 +265,7 @@ async function beginDirectoryTransaction(
     destination,
     backup: join(dirname(destination), `.${basename(destination)}.openclaw-atif-${id}.backup`),
     stage,
-    files: Object.fromEntries([...files].map(([name, content]) => [name, sha256(content)])),
+    files: fileHashes(files),
   };
   await writeFreshFile(transactionPath(destination), `${JSON.stringify(transaction)}\n`);
   await syncDirectory(dirname(destination));
@@ -262,7 +275,7 @@ async function beginDirectoryTransaction(
 // The transaction keeps recovery, replacement, and cleanup in one ordered operation.
 export async function writeAtomicDirectory(
   destination: string,
-  files: ReadonlyMap<string, string>,
+  files: ReadonlyMap<string, OutputContent>,
   force = false,
   signal?: AbortSignal,
 ): Promise<WriteResult[]> {
@@ -272,7 +285,7 @@ export async function writeAtomicDirectory(
   await ensureDirectory(parent);
   await recoverDirectory(destination);
 
-  if (await directoryMatches(destination, files)) {
+  if (await directoryMatchesHashes(destination, fileHashes(files))) {
     await secureExistingDirectory(destination, files);
     return [...files].map(([name, content]) => ({
       path: join(destination, name),
@@ -288,11 +301,14 @@ export async function writeAtomicDirectory(
   let transaction: DirectoryTransaction | undefined;
   await mkdir(stage, { mode: 0o700 });
   try {
+    const hasMedia = [...files.keys()].some((name) => name.startsWith("media/"));
+    if (hasMedia) await mkdir(join(stage, "media"), { mode: 0o700 });
     for (const [name, content] of [...files].sort(([left], [right]) =>
       compareCodeUnits(left, right),
     )) {
       await writeFreshFile(join(stage, name), content);
     }
+    if (hasMedia) await syncDirectory(join(stage, "media"));
     await syncDirectory(stage);
     throwIfAborted(signal);
 

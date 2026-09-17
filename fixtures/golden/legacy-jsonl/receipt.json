@@ -36,7 +36,7 @@
     }
   ],
   "output": {
-    "trajectorySha256": "2e6e3c0ba763be621a2eb68510bd7bfa68cd378c26a3ce439cf6d2e77d284609"
+    "trajectorySha256": "69116228178d0db8d066c2a888082732368a1df455bba8bd776323c0b09a1555"
   },
   "relationships": [
     {
@@ -51,7 +51,7 @@
   "root": {
     "sessionId": "legacy-jsonl-root-session",
     "sessionKey": "agent:main:main",
-    "trajectoryId": "openclaw-dd124375d9fec5e0b5f458b73258c4a1"
+    "trajectoryId": "openclaw-bc6975ddb2e30f8398b1a8bb8ddc97e2"
   },
   "schema": "openclaw-atif-receipt-v1",
   "source": {
@@ -67,7 +67,7 @@
   "status": "complete",
   "validation": {
     "harbor": "not-run-runtime",
-    "harborConformanceCommit": "c3ce0c60bbd2fd1888b327efcc880dbd86d8b7cf",
+    "harborConformanceCommit": "74cc6312018c349c6bd2400c89a0ac4983ac1085",
     "localAtif": true
   }
 }

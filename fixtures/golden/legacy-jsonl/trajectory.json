@@ -56,7 +56,7 @@
     "total_prompt_tokens": 12,
     "total_steps": 3
   },
-  "schema_version": "ATIF-v1.7",
+  "schema_version": "ATIF-v1.8",
   "session_id": "legacy-jsonl-root-session",
   "steps": [
     {
@@ -132,7 +132,7 @@
                   "relationship_kind": "native-subagent"
                 },
                 "session_id": "legacy-jsonl-child-session",
-                "trajectory_id": "openclaw-d4cd81baafac97a8665880bb078fd68a"
+                "trajectory_id": "openclaw-eccc5f323fa36875c232b861c9ff9c7e"
               }
             ]
           }
@@ -198,7 +198,7 @@
         "total_prompt_tokens": 3,
         "total_steps": 2
       },
-      "schema_version": "ATIF-v1.7",
+      "schema_version": "ATIF-v1.8",
       "session_id": "legacy-jsonl-child-session",
       "steps": [
         {
@@ -234,8 +234,8 @@
           "timestamp": "2026-01-01T00:00:03.000Z"
         }
       ],
-      "trajectory_id": "openclaw-d4cd81baafac97a8665880bb078fd68a"
+      "trajectory_id": "openclaw-eccc5f323fa36875c232b861c9ff9c7e"
     }
   ],
-  "trajectory_id": "openclaw-dd124375d9fec5e0b5f458b73258c4a1"
+  "trajectory_id": "openclaw-bc6975ddb2e30f8398b1a8bb8ddc97e2"
 }

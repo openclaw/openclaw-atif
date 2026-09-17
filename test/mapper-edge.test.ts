@@ -16,6 +16,7 @@ function family(
       [
         "agent:main:main",
         {
+          bundleDirectory: "/missing-bundle",
           key: "agent:main:main",
           sessionId: "session",
           leafId: "leaf",
@@ -39,7 +40,7 @@ function family(
 }
 
 describe("ATIF mapper edge cases", () => {
-  it("maps runtime context and all context-management transcript events", () => {
+  it("maps runtime context and all context-management transcript events", async () => {
     const events = [
       event({
         seq: 1,
@@ -131,7 +132,7 @@ describe("ATIF mapper edge cases", () => {
         data: { message: { content: "uses changed settings" } },
       }),
     ];
-    const result = mapFamilyToAtif(
+    const result = await mapFamilyToAtif(
       family(events, { model: "fallback", modelProvider: "provider" }),
     );
     expect(result.trajectory.steps.map((step) => step.extra?.openclaw)).toHaveLength(11);
@@ -145,7 +146,7 @@ describe("ATIF mapper edge cases", () => {
     expect(assistant?.reasoning_effort).toBe("high");
   });
 
-  it("does not backfill earlier steps from later model metadata", () => {
+  it("does not backfill earlier steps from later model metadata", async () => {
     const events = [
       event({
         seq: 1,
@@ -171,12 +172,12 @@ describe("ATIF mapper edge cases", () => {
         data: { message: { content: "after" } },
       }),
     ];
-    const result = mapFamilyToAtif(family(events));
+    const result = await mapFamilyToAtif(family(events));
     expect(result.trajectory.steps[0]?.model_name).toBeUndefined();
     expect(result.trajectory.steps[1]?.model_name).toBe("p/new");
   });
 
-  it("omits image references that would be invalid outside the source bundle", () => {
+  it("omits media references that would be invalid outside the source bundle", async () => {
     const events = [
       event({
         seq: 1,
@@ -196,15 +197,15 @@ describe("ATIF mapper edge cases", () => {
         },
       }),
     ];
-    const result = mapFamilyToAtif(family(events));
+    const result = await mapFamilyToAtif(family(events));
     expect(result.trajectory.steps[0]?.message).toBe("look");
-    expect(result.diagnostics.filter((item) => item.code === "image-content-omitted")).toHaveLength(
-      2,
-    );
-    expect(result.diagnostics.some((item) => item.code === "content-block-unsupported")).toBe(true);
+    expect(
+      result.diagnostics.filter((item) => item.code === "media-source-unsupported"),
+    ).toHaveLength(2);
+    expect(result.diagnostics.some((item) => item.code === "media-file-unavailable")).toBe(true);
   });
 
-  it("preserves malformed tool arguments as metadata and detects reused call IDs", () => {
+  it("preserves malformed tool arguments as metadata and detects reused call IDs", async () => {
     const events = [
       event({
         seq: 1,
@@ -249,13 +250,13 @@ describe("ATIF mapper edge cases", () => {
         data: { message: { toolCallId: "same", content: "done" } },
       }),
     ];
-    const result = mapFamilyToAtif(family(events));
+    const result = await mapFamilyToAtif(family(events));
     expect(result.trajectory.steps[0]?.tool_calls?.[0]?.extra?.arguments_status).toBe("unparsed");
     expect(result.trajectory.steps[1]?.tool_calls?.[0]?.arguments).toEqual({ ok: true });
     expect(result.diagnostics.some((item) => item.code === "duplicate-tool-call-id")).toBe(true);
   });
 
-  it("omits and diagnoses tool calls without source identifiers", () => {
+  it("omits and diagnoses tool calls without source identifiers", async () => {
     const events = [
       event({
         seq: 1,
@@ -274,14 +275,14 @@ describe("ATIF mapper edge cases", () => {
         data: { assistantEntryId: "assistant", arguments: {} },
       }),
     ];
-    const result = mapFamilyToAtif(family(events));
+    const result = await mapFamilyToAtif(family(events));
     expect(result.trajectory.steps[0]?.tool_calls).toBeUndefined();
     expect(result.diagnostics.some((item) => item.code === "tool-call-identity-unavailable")).toBe(
       true,
     );
   });
 
-  it("omits malformed metrics and preserves observed zero and cache writes", () => {
+  it("omits malformed metrics and preserves observed zero and cache writes", async () => {
     const events = [
       event({
         seq: 1,
@@ -299,7 +300,7 @@ describe("ATIF mapper edge cases", () => {
         },
       }),
     ];
-    const result = mapFamilyToAtif(family(events));
+    const result = await mapFamilyToAtif(family(events));
     expect(result.trajectory.steps[0]?.metrics).toEqual({
       prompt_tokens: 5,
       cached_tokens: 0,
@@ -309,7 +310,7 @@ describe("ATIF mapper edge cases", () => {
     expect(result.trajectory.final_metrics?.total_completion_tokens).toBeUndefined();
   });
 
-  it("does not duplicate diagnostics already normalized at family scope", () => {
+  it("does not duplicate diagnostics already normalized at family scope", async () => {
     const snapshot = family([]);
     const diagnostic = {
       code: "source-warning",
@@ -318,12 +319,12 @@ describe("ATIF mapper edge cases", () => {
     };
     snapshot.diagnostics.push(diagnostic);
     snapshot.nodes.get("agent:main:main")?.diagnostics.push(diagnostic);
-    const result = mapFamilyToAtif(snapshot);
+    const result = await mapFamilyToAtif(snapshot);
     expect(result.diagnostics.filter((item) => item.code === "source-warning")).toHaveLength(1);
   });
 
-  it("creates an explicit empty structural step for an unmappable bundle", () => {
-    const result = mapFamilyToAtif(
+  it("creates an explicit empty structural step for an unmappable bundle", async () => {
+    const result = await mapFamilyToAtif(
       family([event({ seq: 1, source: "runtime", type: "session.started", sessionId: "session" })]),
     );
     expect(result.trajectory.steps).toEqual([

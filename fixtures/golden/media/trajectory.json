@@ -1,0 +1,149 @@
+{
+  "agent": {
+    "extra": {
+      "source_bundle": "openclaw-trajectory-v1",
+      "source_redacted": true,
+      "trace_metadata": {}
+    },
+    "name": "openclaw",
+    "version": "synthetic-media-fixture"
+  },
+  "extra": {
+    "openclaw": {
+      "bundle_warning_codes": [],
+      "leaf_id": "leaf-1",
+      "relationships": [],
+      "runtime": {
+        "event_type_counts": {
+          "session.ended": 1
+        },
+        "terminal_events": [
+          {
+            "data": {
+              "reason": "completed"
+            },
+            "run_id": null,
+            "type": "session.ended"
+          }
+        ]
+      },
+      "session_id": "media-session",
+      "session_key": "agent:main:main",
+      "source_redacted": true,
+      "wrapper_only": false
+    }
+  },
+  "final_metrics": {
+    "extra": {
+      "scope": "own-trajectory-only"
+    },
+    "total_completion_tokens": 1,
+    "total_prompt_tokens": 5,
+    "total_steps": 2
+  },
+  "schema_version": "ATIF-v1.8",
+  "session_id": "media-session",
+  "steps": [
+    {
+      "extra": {
+        "openclaw": {
+          "entry_id": "u",
+          "event_type": "user.message"
+        }
+      },
+      "message": [
+        {
+          "text": "Look and listen.",
+          "type": "text"
+        },
+        {
+          "source": {
+            "media_type": "image/png",
+            "path": "media/b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640.png"
+          },
+          "type": "image"
+        },
+        {
+          "source": {
+            "duration_sec": 0.000125,
+            "media_type": "audio/wav",
+            "path": "media/4aebda3a657a0d8f532d11ceacb1679081d7bdf7d7d301a53f1096af3580be91.wav"
+          },
+          "type": "audio"
+        }
+      ],
+      "source": "user",
+      "step_id": 1,
+      "timestamp": "2026-01-01T00:00:01.000Z"
+    },
+    {
+      "extra": {
+        "openclaw": {
+          "entry_id": "a",
+          "error_message": null,
+          "stop_reason": null
+        }
+      },
+      "llm_call_count": 1,
+      "message": [
+        {
+          "source": {
+            "duration_sec": 0.000125,
+            "media_type": "audio/wav",
+            "path": "media/4aebda3a657a0d8f532d11ceacb1679081d7bdf7d7d301a53f1096af3580be91.wav"
+          },
+          "type": "audio"
+        }
+      ],
+      "metrics": {
+        "completion_tokens": 1,
+        "extra": {
+          "cache_write_tokens": 3
+        },
+        "prompt_tokens": 5
+      },
+      "observation": {
+        "results": [
+          {
+            "content": [
+              {
+                "source": {
+                  "media_type": "image/png",
+                  "path": "media/b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640.png"
+                },
+                "type": "image"
+              },
+              {
+                "source": {
+                  "duration_sec": 0.000125,
+                  "media_type": "audio/wav",
+                  "path": "media/4aebda3a657a0d8f532d11ceacb1679081d7bdf7d7d301a53f1096af3580be91.wav"
+                },
+                "type": "audio"
+              }
+            ],
+            "extra": {
+              "openclaw": {
+                "entry_id": "r",
+                "is_error": false,
+                "tool_name": "read"
+              }
+            },
+            "source_call_id": "read-1"
+          }
+        ]
+      },
+      "source": "agent",
+      "step_id": 2,
+      "timestamp": "2026-01-01T00:00:02.000Z",
+      "tool_calls": [
+        {
+          "arguments": {},
+          "function_name": "read",
+          "tool_call_id": "read-1"
+        }
+      ]
+    }
+  ],
+  "trajectory_id": "openclaw-c94cb688e178862b915652d9596b8902"
+}

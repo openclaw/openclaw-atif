@@ -56,7 +56,7 @@
     "total_prompt_tokens": 12,
     "total_steps": 3
   },
-  "schema_version": "ATIF-v1.7",
+  "schema_version": "ATIF-v1.8",
   "session_id": "sqlite-root-session",
   "steps": [
     {
@@ -132,7 +132,7 @@
                   "relationship_kind": "acp-child"
                 },
                 "session_id": "sqlite-child-session",
-                "trajectory_id": "openclaw-dd926c52c504e21909f21dd192b1e053"
+                "trajectory_id": "openclaw-169fefdd6b7ce80ea2dae9ea50e8dc16"
               }
             ]
           }
@@ -198,7 +198,7 @@
         "total_prompt_tokens": 3,
         "total_steps": 2
       },
-      "schema_version": "ATIF-v1.7",
+      "schema_version": "ATIF-v1.8",
       "session_id": "sqlite-child-session",
       "steps": [
         {
@@ -234,8 +234,8 @@
           "timestamp": "2026-01-01T00:00:03.000Z"
         }
       ],
-      "trajectory_id": "openclaw-dd926c52c504e21909f21dd192b1e053"
+      "trajectory_id": "openclaw-169fefdd6b7ce80ea2dae9ea50e8dc16"
     }
   ],
-  "trajectory_id": "openclaw-8a2f9f9c5c0d80c4eea0da49a0229953"
+  "trajectory_id": "openclaw-bd3d1215221e9076357f128f6d1afbf9"
 }

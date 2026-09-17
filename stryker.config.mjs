@@ -1,4 +1,5 @@
 export default {
+  buildCommand: "npm run build",
   checkers: ["typescript"],
   coverageAnalysis: "perTest",
   mutate: ["src/atif/identity.ts", "src/stable-json.ts"],
