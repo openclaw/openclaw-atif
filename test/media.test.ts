@@ -53,10 +53,15 @@ describe("media retention", () => {
     const f = await fixture();
     const open = vi.spyOn(fs, "open");
     const fetch = vi.spyOn(globalThis, "fetch");
-    expect(await f.image(path)).toEqual({
-      type: "image",
-      source: { media_type: "image/png", path },
-    });
+    for (const block of [
+      { source: { media_type: "image/png", path } },
+      { media_type: "image/png", image_url: path },
+    ]) {
+      expect(await f.part(block)).toEqual({
+        type: "image",
+        source: { media_type: "image/png", path },
+      });
+    }
     expect(open).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
     expect(f.store.files.size).toBe(0);
@@ -99,6 +104,9 @@ describe("media retention", () => {
       { source: { media_type: "image/png" } },
       { source: { media_type: "audio/wav", path: "hidden-path" } },
       { source: { media_type: "image/svg+xml", path: "hidden-path" } },
+      { image_url: "https://example.test/p.png" },
+      { media_type: "image/png", image_url: 42 },
+      { media_type: "audio/wav", image_url: "https://example.test/p.png" },
     ])
       expect(await f.part(block)).toBeUndefined();
     for (const path of [
@@ -109,7 +117,7 @@ describe("media retention", () => {
       "http:not-an-absolute-url",
     ])
       expect(await f.image(path)).toBeUndefined();
-    expect(f.diagnostics).toHaveLength(10);
+    expect(f.diagnostics).toHaveLength(13);
     expect(JSON.stringify(f.diagnostics)).not.toContain("hidden-path");
     expect(f.store.files.size).toBe(0);
   });

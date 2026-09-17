@@ -53,7 +53,7 @@ function sameSnapshot(left: Stats, right: Stats): boolean {
 function reference(block: Record<string, unknown>, type: "image" | "audio"): MediaPart {
   const source = asRecord(block.source) ?? asRecord(block[`${type}_url`]) ?? block;
   const mediaType = firstValue(source, ["media_type", "mediaType", "mimeType", "mime_type"]);
-  const path = firstValue(source, ["url", "path", "file_path", "filePath"]);
+  const path = firstValue(source, ["url", "path", "file_path", "filePath", `${type}_url`]);
   const duration = source.duration_sec ?? block.duration_sec;
   const parsed = contentPartSchema.safeParse({
     type,

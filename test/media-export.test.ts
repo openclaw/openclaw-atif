@@ -71,6 +71,54 @@ describe("media export through public entry points", () => {
     await verifyMedia(f.output);
   });
 
+  it("retains scalar image_url and input_image locations after input cleanup", async () => {
+    const f = await fixture();
+    const bytes = await readFile(join(f.bundleRoot, "root", "pixel.png"));
+    await writeBundle({
+      root: f.bundleRoot,
+      name: "root",
+      sessionId: "media-session",
+      sessionKey: "agent:main:main",
+      events: [
+        event({
+          seq: 1,
+          source: "transcript",
+          type: "user.message",
+          sessionId: "media-session",
+          data: {
+            message: {
+              content: ["image_url", "input_image"].map((type) => ({
+                type,
+                media_type: "image/png",
+                image_url: "pixel.png",
+              })),
+            },
+          },
+        }),
+        event({
+          seq: 2,
+          source: "runtime",
+          type: "session.ended",
+          sessionId: "media-session",
+          data: { reason: "completed" },
+        }),
+      ],
+    });
+    const result = await convertOpenClawBundles({ ...f, requireComplete: true });
+    expect(result.status).toBe("complete");
+    expect(result.receipt.diagnostics).toEqual([]);
+    expect(await readdir(join(f.output, "media"))).toHaveLength(1);
+    const parts = localParts(result.trajectory);
+    expect(parts).toHaveLength(2);
+    await rm(f.bundleRoot, { recursive: true });
+    for (const part of parts) {
+      expect(part.type).toBe("image");
+      expect(part.source.media_type).toBe("image/png");
+      expect(part.source.path).toMatch(/^media\/[0-9a-f]{64}\.png$/);
+      expect(await readFile(join(f.output, part.source.path))).toEqual(bytes);
+    }
+  });
+
   it("runs the compiled CLI with retained media and no remaining input bundles", async () => {
     const f = await fixture();
     const stdout = execFileSync(
