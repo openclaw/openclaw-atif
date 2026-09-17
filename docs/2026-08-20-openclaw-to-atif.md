@@ -73,7 +73,7 @@ An ACP child represents the OpenClaw wrapper transcript. It does not claim to co
 
 Per-step metrics use finite provider-reported values. `prompt_tokens` is the sum of uncached input, cache reads, and cache writes under the OpenClaw usage contract. Cache reads also populate `cached_tokens`, and cache writes remain visible in `extra`.
 
-Each trajectory's final metrics cover only its own steps. The receipt contains a separately scoped family aggregate.
+Each trajectory's final metrics cover only its own steps. The receipt contains a separately scoped family aggregate. If a step reports nonzero token usage without a valid cost, omit the trajectory's total cost and the family's total cost. Keep any observed per-step costs. An explicit zero cost is known; a missing cost is not zero.
 
 ## Unsupported or missing data
 

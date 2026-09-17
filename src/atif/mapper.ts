@@ -446,7 +446,13 @@ function finalMetrics(steps: readonly AtifStep[]): AtifFinalMetrics {
   let observedCompletion = false;
   let observedCached = false;
   let observedCost = false;
+  let unpricedUsage = false;
   for (const step of steps) {
+    if (
+      step.metrics?.cost_usd === undefined &&
+      ((step.metrics?.prompt_tokens ?? 0) > 0 || (step.metrics?.completion_tokens ?? 0) > 0)
+    )
+      unpricedUsage = true;
     if (step.metrics?.prompt_tokens !== undefined) {
       prompt += step.metrics.prompt_tokens;
       observedPrompt = true;
@@ -469,7 +475,7 @@ function finalMetrics(steps: readonly AtifStep[]): AtifFinalMetrics {
     ...(observedPrompt ? { total_prompt_tokens: prompt } : {}),
     ...(observedCompletion ? { total_completion_tokens: completion } : {}),
     ...(observedCached ? { total_cached_tokens: cached } : {}),
-    ...(observedCost ? { total_cost_usd: cost } : {}),
+    ...(observedCost && !unpricedUsage ? { total_cost_usd: cost } : {}),
     extra: { scope: "own-trajectory-only" },
   };
 }
