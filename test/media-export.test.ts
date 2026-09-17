@@ -71,7 +71,7 @@ describe("media export through public entry points", () => {
     await verifyMedia(f.output);
   });
 
-  it("retains scalar image_url and input_image locations after input cleanup", async () => {
+  it("retains scalar and nested image locations after input cleanup", async () => {
     const f = await fixture();
     const bytes = await readFile(join(f.bundleRoot, "root", "pixel.png"));
     await writeBundle({
@@ -87,11 +87,17 @@ describe("media export through public entry points", () => {
           sessionId: "media-session",
           data: {
             message: {
-              content: ["image_url", "input_image"].map((type) => ({
-                type,
-                media_type: "image/png",
-                image_url: "pixel.png",
-              })),
+              content: [
+                ...["image_url", "input_image"].map((type) => ({
+                  type,
+                  media_type: "image/png",
+                  image_url: "pixel.png",
+                })),
+                {
+                  type: "input_image",
+                  input_image: { media_type: "image/png", path: "pixel.png" },
+                },
+              ],
             },
           },
         }),
@@ -109,7 +115,7 @@ describe("media export through public entry points", () => {
     expect(result.receipt.diagnostics).toEqual([]);
     expect(await readdir(join(f.output, "media"))).toHaveLength(1);
     const parts = localParts(result.trajectory);
-    expect(parts).toHaveLength(2);
+    expect(parts).toHaveLength(3);
     await rm(f.bundleRoot, { recursive: true });
     for (const part of parts) {
       expect(part.type).toBe("image");

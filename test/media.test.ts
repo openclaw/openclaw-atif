@@ -56,6 +56,7 @@ describe("media retention", () => {
     for (const block of [
       { source: { media_type: "image/png", path } },
       { media_type: "image/png", image_url: path },
+      { input_image: { media_type: "image/png", path } },
     ]) {
       expect(await f.part(block)).toEqual({
         type: "image",
@@ -96,6 +97,26 @@ describe("media retention", () => {
     });
   });
 
+  it("keeps existing source precedence and limits input_image to images", async () => {
+    const f = await fixture();
+    const chosen = { media_type: "image/png", path: "https://example.test/chosen.png" };
+    const other = { media_type: "image/png", path: "https://example.test/other.png" };
+    for (const block of [
+      { source: chosen, image_url: other, input_image: other },
+      { image_url: chosen, input_image: other },
+    ]) {
+      expect(await f.part(block)).toEqual({ type: "image", source: chosen });
+    }
+    expect(
+      await f.part({ source: { media_type: "image/png" }, input_image: chosen }),
+    ).toBeUndefined();
+    expect(await f.part({ input_image: chosen }, "audio")).toBeUndefined();
+    expect(f.diagnostics.map((d) => d.code)).toEqual([
+      "media-source-unsupported",
+      "media-source-unsupported",
+    ]);
+  });
+
   it("diagnoses unsupported or incomplete sources without exposing their paths", async () => {
     const f = await fixture();
     for (const block of [
@@ -107,6 +128,9 @@ describe("media retention", () => {
       { image_url: "https://example.test/p.png" },
       { media_type: "image/png", image_url: 42 },
       { media_type: "audio/wav", image_url: "https://example.test/p.png" },
+      { input_image: { path: "hidden-path" } },
+      { input_image: { media_type: "image/png", path: 42 } },
+      { input_image: { media_type: "audio/wav", path: "hidden-path" } },
     ])
       expect(await f.part(block)).toBeUndefined();
     for (const path of [
@@ -117,7 +141,7 @@ describe("media retention", () => {
       "http:not-an-absolute-url",
     ])
       expect(await f.image(path)).toBeUndefined();
-    expect(f.diagnostics).toHaveLength(13);
+    expect(f.diagnostics).toHaveLength(16);
     expect(JSON.stringify(f.diagnostics)).not.toContain("hidden-path");
     expect(f.store.files.size).toBe(0);
   });
@@ -136,13 +160,15 @@ describe("media retention", () => {
       "outside/private.png",
       "inside/allowed.png",
       ".",
-    ])
+    ]) {
       expect(await f.image(path)).toBeUndefined();
+      expect(await f.part({ input_image: { media_type: "image/png", path } })).toBeUndefined();
+    }
     await fs.mkdir(join(f.bundle, "directory"));
     expect(await f.image("directory")).toBeUndefined();
     expect(await f.image("missing.png")).toBeUndefined();
     expect(f.diagnostics.map((d) => d.code)).toEqual([
-      ...Array<string>(6).fill("media-unsafe-path"),
+      ...Array<string>(12).fill("media-unsafe-path"),
       "media-not-regular-file",
       "media-file-unavailable",
     ]);

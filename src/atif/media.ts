@@ -50,8 +50,20 @@ function sameSnapshot(left: Stats, right: Stats): boolean {
   );
 }
 
+function sourceRecord(
+  block: Record<string, unknown>,
+  type: "image" | "audio",
+): Record<string, unknown> {
+  return (
+    asRecord(block.source) ??
+    asRecord(block[`${type}_url`]) ??
+    (type === "image" ? asRecord(block.input_image) : undefined) ??
+    block
+  );
+}
+
 function reference(block: Record<string, unknown>, type: "image" | "audio"): MediaPart {
-  const source = asRecord(block.source) ?? asRecord(block[`${type}_url`]) ?? block;
+  const source = sourceRecord(block, type);
   const mediaType = firstValue(source, ["media_type", "mediaType", "mimeType", "mime_type"]);
   const path = firstValue(source, ["url", "path", "file_path", "filePath", `${type}_url`]);
   const duration = source.duration_sec ?? block.duration_sec;
