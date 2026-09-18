@@ -54,7 +54,11 @@ function isInside(root: string, target: string): boolean {
   return location === "" || (!location.startsWith("..") && !isAbsolute(location));
 }
 
-async function confineCopiedSessionStore(source: string, destination: string): Promise<void> {
+async function confineCopiedSessionStore(
+  source: string,
+  sourceArgument: string,
+  destination: string,
+): Promise<void> {
   const configPath = join(destination, "openclaw.json");
   let raw: string;
   try {
@@ -80,8 +84,13 @@ async function confineCopiedSessionStore(source: string, destination: string): P
     throw new Error("Legacy session.store must be an absolute path inside the copied state");
   }
   const configuredStore = resolve(sessionConfig.store);
-  if (isInside(source, configuredStore)) {
-    sessionConfig.store = join(destination, relative(source, configuredStore));
+  const sourceRoot = isInside(source, configuredStore)
+    ? source
+    : isInside(sourceArgument, configuredStore)
+      ? sourceArgument
+      : undefined;
+  if (sourceRoot) {
+    sessionConfig.store = join(destination, relative(sourceRoot, configuredStore));
   } else if (!isInside(destination, configuredStore)) {
     throw new Error("Legacy session.store resolves outside the copied state");
   }
@@ -95,7 +104,8 @@ export async function prepareLegacyMigrationCopy(params: {
   executable: string;
   command?: CommandOptions;
 }): Promise<{ stateDir: string; receipt: LegacyMigrationReceipt }> {
-  const source = await realpath(params.sourceStateDir);
+  const sourceArgument = resolve(params.sourceStateDir);
+  const source = await realpath(sourceArgument);
   const details = await lstat(source);
   if (!details.isDirectory() || details.isSymbolicLink())
     throw new Error("Legacy source state must be a regular directory");
@@ -114,7 +124,7 @@ export async function prepareLegacyMigrationCopy(params: {
   const afterCopy = await treeFingerprint(source);
   if (before !== afterCopy)
     throw new Error("Legacy source state changed while creating the migration copy");
-  await confineCopiedSessionStore(source, destination);
+  await confineCopiedSessionStore(source, sourceArgument, destination);
   const commands: LegacyMigrationReceipt["commands"] = [];
   const commandOptions = {
     ...params.command,

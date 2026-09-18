@@ -21,5 +21,8 @@ test "$(git -C "$HARBOR_ROOT" rev-parse HEAD)" = "$HARBOR_COMMIT"
 python3 -m venv "$TEMP_ROOT/venv"
 "$TEMP_ROOT/venv/bin/python" -m pip install --quiet "pydantic==$PYDANTIC_VERSION"
 "$TEMP_ROOT/venv/bin/python" -m pip install --quiet --no-deps "$HARBOR_ROOT"
-mapfile -t TRAJECTORIES < <(find fixtures/golden -type f -name 'trajectory.json' -print | sort)
+TRAJECTORIES=()
+while IFS= read -r trajectory; do
+  TRAJECTORIES+=("$trajectory")
+done < <(find fixtures/golden -type f -name 'trajectory.json' -print | sort)
 "$TEMP_ROOT/venv/bin/python" scripts/validate-harbor.py "$HARBOR_ROOT" "${TRAJECTORIES[@]}"

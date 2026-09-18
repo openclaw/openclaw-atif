@@ -175,6 +175,28 @@ describe("media retention", () => {
     expect(f.store.files.size).toBe(0);
   });
 
+  it("accepts a bundle reached through a symlinked ancestor", async () => {
+    const root = await fs.mkdtemp(join(tmpdir(), "openclaw-atif-media-alias-"));
+    roots.push(root);
+    const actual = join(root, "actual");
+    const alias = join(root, "alias");
+    const bundle = join(actual, "bundle");
+    await fs.mkdir(bundle, { recursive: true });
+    await fs.symlink(actual, alias);
+    await fs.writeFile(join(bundle, "image.png"), "image");
+    const store = new MediaStore();
+    const diagnostics: Diagnostic[] = [];
+    const part = await store.part(
+      { source: { media_type: "image/png", path: join(alias, "bundle", "image.png") } },
+      "image",
+      join(alias, "bundle"),
+      diagnostics,
+      "root",
+    );
+    expect(part?.source.path).toMatch(/^media\/[0-9a-f]{64}\.png$/);
+    expect(diagnostics).toEqual([]);
+  });
+
   it("rejects a bundle directory replaced by a symlink", async () => {
     const f = await fixture();
     const replacement = join(f.root, "replacement");

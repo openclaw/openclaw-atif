@@ -6,7 +6,11 @@ import { prepareLegacyMigrationCopy } from "../src/legacy/migrate-copy.js";
 
 describe("legacy migration-on-copy", () => {
   it("runs the targeted migration sequence without changing source", async () => {
-    const root = await mkdtemp(join(tmpdir(), "openclaw-atif-legacy-"));
+    const temporaryRoot = await mkdtemp(join(tmpdir(), "openclaw-atif-legacy-"));
+    const actualRoot = join(temporaryRoot, "actual");
+    const root = join(temporaryRoot, "alias");
+    await mkdir(actualRoot);
+    await symlink(actualRoot, root);
     const source = join(root, "source");
     const staging = join(root, "staging");
     await mkdir(join(source, "agents", "main", "sessions"), { recursive: true });

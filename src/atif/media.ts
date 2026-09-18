@@ -92,13 +92,22 @@ function externalReference(path: string): boolean {
   throw new MediaError("media-location-unsupported");
 }
 
+function localPath(root: string, target: string): string | undefined {
+  const location = relative(root, target);
+  if (!location || location.split(sep).includes("..") || isAbsolute(location)) return undefined;
+  return location;
+}
+
 async function containedFile(root: string, location: string): Promise<string> {
-  const base = resolve(root);
-  if ((await realpath(base)) !== base) throw new MediaError("media-unsafe-path");
-  const path = resolve(base, location);
-  const local = relative(base, path);
-  if (!local || local.split(sep).includes("..") || isAbsolute(local))
-    throw new MediaError("media-unsafe-path");
+  const requestedBase = resolve(root);
+  if ((await lstat(requestedBase)).isSymbolicLink()) throw new MediaError("media-unsafe-path");
+  const base = await realpath(requestedBase);
+  const requestedPath = resolve(requestedBase, location);
+  const local =
+    localPath(requestedBase, requestedPath) ??
+    (isAbsolute(location) ? localPath(base, requestedPath) : undefined);
+  if (!local) throw new MediaError("media-unsafe-path");
+  const path = resolve(base, local);
   // Check every component, including directory symlinks that point back inside the bundle.
   let current = base;
   for (const component of local.split(sep)) {
