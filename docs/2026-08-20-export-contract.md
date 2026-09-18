@@ -65,7 +65,7 @@ When media is missing, unsafe, unsupported, above a limit, or cannot be copied, 
 - `partial`: valid output exists, but one or more source facts, descendants, references, leaves, generations, or runtime events were unavailable. Explicit OpenClaw truncation or dropped-field markers also cause this state. Capture retries transient session-generation and disappearing-child races before it emits this state.
 - `failed`: no final output was committed.
 
-Schema validity does not imply completeness.
+Schema validity does not imply completeness. Runtime events with unknown types or malformed supported payloads remain in trajectory metadata and make the export partial. Preserving unknown data does not prove that its meaning was converted. A valid `provider.prompt.observed` event that reports a prompt mismatch does not by itself make the export partial; completeness describes the export, not whether the source run behaved correctly.
 
 ## Privacy
 

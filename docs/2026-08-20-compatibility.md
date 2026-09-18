@@ -18,6 +18,8 @@ Required compatibility coverage includes:
 
 The package does not interpret either storage layout. It invokes the OpenClaw version that owns the state and consumes its public bundle.
 
+The `provider-prompts` fixture replays the public `provider.prompt.observed` field contract from OpenClaw 2026.9.3, source commit `1391f7cd2d40ab5bbcf2f5f831d3a64f520e72d7`. Its source is `ResponsesPromptObservation` in `packages/ai/src/transports/openai-responses-contracts.ts` and the runtime emitter in `src/agents/embedded-agent-runner/provider-prompt-state.ts`. All fixture identities, messages, counts, and times are synthetic; it is not a saved live run. It covers multiple run IDs, repeated observations, and a prompt mismatch. Library, golden, installed-CLI, and Harbor conformance checks exercise this fixture.
+
 For an older archive without the export command, migration-on-copy uses a caller-selected official migration-capable OpenClaw executable. It uses the documented session SQLite inspect, dry-run, import, and validate sequence when available. Older command surfaces use documented non-interactive repair followed by a public session-list verification.
 
 Before any migration command runs, a configured absolute `session.store` inside the source tree is rewritten to the corresponding copied path. Relative, unparseable, or external store targets are rejected. Migration commands cannot operate on the original store through copied configuration.
@@ -30,6 +32,6 @@ ATIF-v1.8 adds audio content and `AudioSource` validation. Harbor merged it in [
 
 Runtime validation stays local. Pin Harbor conformance checks to an immutable upstream revision that includes ATIF-v1.8. Validate the updated fixtures with Harbor's Pydantic trajectory model, `TrajectoryValidator`, and a real consumer load. Include retained media and verify that local references still resolve after source-bundle cleanup.
 
-Adding a new OpenClaw bundle or ATIF version requires updated fixtures and repeated Harbor conformance tests before publication. This task updates the unpublished package and its pull request. It does not authorize a package release.
+Adding a new OpenClaw bundle or ATIF version requires updated fixtures and repeated Harbor conformance tests before publication. After an approved package release, update Harbor's exact npm pin and repeat the isolated live-model trial. Passing the synthetic fixture does not establish that the new package passes that live trial.
 
 Report fixture tests, installed-CLI tests, real OpenClaw runs, and live-model runs separately. A scripted fixture or model response does not establish live-model coverage.

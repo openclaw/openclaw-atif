@@ -45,9 +45,15 @@ Omit unsupported, missing, unsafe, or unretained content with explicit receipt d
 
 ## Runtime facts
 
-`trace.metadata`, `context.compiled`, `prompt.submitted`, `model.fallback_step`, `model.completed`, `trace.artifacts`, and `session.ended` supply agent configuration, context, outcome, and provenance only when they can be associated by exact source identity. OpenClaw tool descriptions from compiled context are converted to ATIF's OpenAI-style function-definition shape.
+One runtime-event policy controls both completeness checks and mapping. `context.compiled` and `model.fallback_step` become system context steps. OpenClaw tool descriptions from compiled context are converted to ATIF's OpenAI-style function-definition shape. `trace.metadata` also supplies observed agent configuration.
 
-Runtime and transcript copies of the same dialogue are not emitted twice.
+Other runtime events remain ordered public event records in `extra.openclaw.runtime.events`. This replaces the narrower `terminal_events` field in place. Preserve the full public envelope and payload, including supplied sequence, timestamp, run ID, provider, model, and additional fields. Do not invent missing identity fields or attach events to nearby messages. Each child trajectory retains its own events. `event_type_counts` counts all runtime events, including those mapped to context steps.
+
+Recognized metadata events are `session.started`, `trace.metadata`, `prompt.submitted`, `provider.prompt.observed`, `model.completed`, `trace.artifacts`, and `session.ended`. Unknown events are retained in the same list but still produce `unsupported-runtime-event` and a partial export. An unknown runtime event cannot become a transcript step merely because its type matches a transcript event name.
+
+`provider.prompt.observed` records transport and payload labels, prompt placement, expected and observed character counts, and `matchesAssembledPrompt`. Validate these fields against the OpenClaw 2026.9.3 observation contract while preserving additional public fields. Malformed observations produce `invalid-runtime-event` and remain in the partial output. A valid observation with `matchesAssembledPrompt: false` or `promptSource: "missing"` is retained source evidence, not an export failure. Source truncation and dropped-field markers still make the export partial.
+
+Metadata events do not create messages, steps, retries, or usage metrics. Runtime and transcript copies of the same dialogue are not emitted twice.
 
 ## Session events
 

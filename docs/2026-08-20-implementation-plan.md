@@ -14,6 +14,14 @@ OpenClaw owns access to legacy JSONL and current SQLite storage. This package co
 
 The canonical requirements are the [export contract](2026-08-20-export-contract.md), [mapping specification](2026-08-20-openclaw-to-atif.md), and [compatibility rules](2026-08-20-compatibility.md). Preserve the existing library and CLI as one shared conversion path.
 
+## Runtime event follow-up
+
+The September 18, 2026 follow-up fixes partial exports caused by `provider.prompt.observed` in published OpenClaw 2026.9.3. Use one shared event policy for normalization and mapping. Keep observed provider-prompt metadata in each trajectory's ordered runtime event list without adding dialogue steps or changing metrics. Retain unknown and malformed events, but keep their partial-output diagnostics. Replace `terminal_events` with the general `events` field in the existing output contract; do not add a compatibility reader or a second converter.
+
+Add a synthetic public-bundle fixture based on the exact released source contract. Cover metadata identity and order, multiple runs and child sessions, mismatches, additional fields, malformed observations, unknown events, truncation, deterministic bytes, complete/partial CLI exits, and installed-package behavior. Run the repository checks and the requested legacy implementation review before delivery. A new npm release requires separate approval. After that release, Harbor must pin it and repeat the isolated Luna trial; this package-only change does not claim a live-model pass.
+
+The original ATIF 1.8 plan and its task boundaries are recorded below.
+
 ## Architecture
 
 1. Probe an explicit official `openclaw` executable and its public commands.

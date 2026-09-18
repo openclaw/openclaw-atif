@@ -17,12 +17,18 @@
         "event_type_counts": {
           "session.ended": 1
         },
-        "terminal_events": [
+        "events": [
           {
             "data": {
               "reason": "completed"
             },
-            "run_id": null,
+            "schemaVersion": 1,
+            "seq": 5,
+            "sessionId": "media-session",
+            "source": "runtime",
+            "traceId": "media-session",
+            "traceSchema": "openclaw-trajectory",
+            "ts": "2026-01-01T00:00:05.000Z",
             "type": "session.ended"
           }
         ]

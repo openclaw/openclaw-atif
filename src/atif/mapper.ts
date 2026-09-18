@@ -15,6 +15,7 @@ import type {
   RelationshipEvidence,
   SessionFamilySnapshot,
 } from "../models/family.js";
+import { classifyRuntimeEvent } from "../models/runtime-events.js";
 import { compareCodeUnits } from "../ordering.js";
 import { ATIF_VERSION } from "../version.js";
 import { trajectoryId } from "./identity.js";
@@ -373,20 +374,22 @@ async function contextStep(
   });
 }
 
-function shouldMapSystemEvent(type: string): boolean {
-  return [
-    "session.compaction",
-    "session.reset",
-    "session.branch_summary",
-    "session.custom",
-    "session.custom_message",
-    "session.thinking_level_change",
-    "session.model_change",
-    "session.label",
-    "session.info",
-    "context.compiled",
-    "model.fallback_step",
-  ].includes(type);
+function shouldMapSystemEvent(event: TrajectoryEvent): boolean {
+  if (event.source === "runtime") return classifyRuntimeEvent(event) === "context";
+  return (
+    event.source === "transcript" &&
+    [
+      "session.compaction",
+      "session.reset",
+      "session.branch_summary",
+      "session.custom",
+      "session.custom_message",
+      "session.thinking_level_change",
+      "session.model_change",
+      "session.label",
+      "session.info",
+    ].includes(event.type)
+  );
 }
 
 function atifToolDefinition(value: unknown): JsonObject | undefined {
@@ -481,20 +484,13 @@ function finalMetrics(steps: readonly AtifStep[]): AtifFinalMetrics {
 }
 
 function runtimeProvenance(node: NormalizedNode): JsonObject {
-  const counts: JsonObject = {};
-  const terminal: JsonObject[] = [];
-  for (const event of node.runtimeEvents) {
-    const current = counts[event.type];
-    counts[event.type] = typeof current === "number" ? current + 1 : 1;
-    if (["model.completed", "trace.artifacts", "session.ended"].includes(event.type)) {
-      terminal.push({
-        type: event.type,
-        run_id: event.runId ?? null,
-        data: toJsonObject(event.data) ?? {},
-      });
-    }
+  const counts = new Map<string, number>();
+  const events: JsonObject[] = [];
+  for (const event of [...node.runtimeEvents].sort((left, right) => left.seq - right.seq)) {
+    counts.set(event.type, (counts.get(event.type) ?? 0) + 1);
+    if (classifyRuntimeEvent(event) !== "context") events.push(toJsonObject(event) ?? {});
   }
-  return { event_type_counts: counts, terminal_events: terminal };
+  return { event_type_counts: Object.fromEntries(counts), events };
 }
 
 async function buildNode(params: {
@@ -553,27 +549,31 @@ async function buildNode(params: {
     ...params.node.exportEvents,
   ].sort((left, right) => left.seq - right.seq);
   for (const event of events) {
-    if (event.type === "trace.metadata") {
+    if (event.source === "runtime" && event.type === "trace.metadata") {
       const modelInfo = asRecord(event.data?.model);
       const model = readNonBlankString(modelInfo?.name);
       const provider = readNonBlankString(modelInfo?.provider);
       if (model)
         state.modelName = provider && !model.includes("/") ? `${provider}/${model}` : model;
     }
-    if (event.type === "session.model_change") {
+    if (event.source === "transcript" && event.type === "session.model_change") {
       const model = readNonBlankString(event.data?.modelId);
       const provider = readNonBlankString(event.data?.provider);
       if (model)
         state.modelName = provider && !model.includes("/") ? `${provider}/${model}` : model;
     }
-    if (event.type === "session.thinking_level_change") {
+    if (event.source === "transcript" && event.type === "session.thinking_level_change") {
       const effort = readNonBlankString(event.data?.thinkingLevel);
       if (effort) state.reasoningEffort = effort;
     }
-    if (event.type === "user.message" || event.type === "assistant.message")
+    if (
+      event.source === "transcript" &&
+      (event.type === "user.message" || event.type === "assistant.message")
+    )
       await messageStep(event, params.node, state, calls);
-    else if (event.type === "tool.result") await resultStep(event, params.node, state, refsByCall);
-    else if (shouldMapSystemEvent(event.type)) await contextStep(event, params.node, state);
+    else if (event.source === "transcript" && event.type === "tool.result")
+      await resultStep(event, params.node, state, refsByCall);
+    else if (shouldMapSystemEvent(event)) await contextStep(event, params.node, state);
   }
   if (state.steps.length === 0) {
     pushStep(state, {

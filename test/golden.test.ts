@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { validateAtifTrajectory } from "../src/atif/schema.js";
 import { convertOpenClawBundles } from "../src/exporter.js";
 
-for (const name of ["legacy-jsonl", "sqlite", "media"] as const) {
+for (const name of ["legacy-jsonl", "sqlite", "media", "provider-prompts"] as const) {
   describe(`golden ${name}`, () => {
     it("is deterministic and schema-valid", async () => {
       const fixture = join(process.cwd(), "fixtures", "bundles", name);

@@ -1,0 +1,51 @@
+{
+  "diagnostics": [],
+  "familyMetrics": {
+    "cachedTokens": 3,
+    "completionTokens": 7,
+    "costUsd": 0.003,
+    "promptTokens": 15,
+    "steps": 4
+  },
+  "nodes": [
+    {
+      "branchCoverage": "selected-active-leaf",
+      "diagnostics": [],
+      "generationCoverage": "public-exported-generation",
+      "leafId": "leaf-1",
+      "sessionId": "prompt-session",
+      "sessionKey": "agent:main:main",
+      "sourceHashes": {
+        "events.jsonl": "e664887e912f26185d31ffce7b8bf74b3e12bd30a8e04b8894f2555cbecfffe3",
+        "manifest.semantic-v1": "4cd94a05caaaa6757465376f89d6e3bf3db03f85f1d80cf97bc1636fd4a0a80c",
+        "session-branch.json": "037dffd1288f22a792ecd635816b4734b8a701d6868d9398a821902589a0e25a"
+      }
+    }
+  ],
+  "output": {
+    "trajectorySha256": "b45657a7bbdc5ca5e8906782be190698849811986c1a5078dfd864556e7859e2"
+  },
+  "relationships": [],
+  "root": {
+    "sessionId": "prompt-session",
+    "sessionKey": "agent:main:main",
+    "trajectoryId": "openclaw-899b403d742ee4fd6463372b67ab7256"
+  },
+  "schema": "openclaw-atif-receipt-v1",
+  "source": {
+    "bundleSchema": "openclaw-trajectory",
+    "bundleSchemaVersion": 1,
+    "listingAfterHash": "0e2053435a5159cbb244a7715f72a070988c075ae68138ffb52dbf4fb553c4db",
+    "listingBeforeHash": "0e2053435a5159cbb244a7715f72a070988c075ae68138ffb52dbf4fb553c4db",
+    "openclawVersion": "synthetic-provider-prompts-2026.9.3-1391f7c",
+    "profile": "openclaw-support-v1",
+    "redacted": true,
+    "stable": true
+  },
+  "status": "complete",
+  "validation": {
+    "harbor": "not-run-runtime",
+    "harborConformanceCommit": "74cc6312018c349c6bd2400c89a0ac4983ac1085",
+    "localAtif": true
+  }
+}

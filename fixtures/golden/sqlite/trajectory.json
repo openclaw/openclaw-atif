@@ -38,7 +38,27 @@
           "context.compiled": 1,
           "trace.metadata": 1
         },
-        "terminal_events": []
+        "events": [
+          {
+            "data": {
+              "harness": {
+                "version": "2026.7.1-2"
+              },
+              "model": {
+                "name": "gpt-test",
+                "provider": "openai"
+              }
+            },
+            "schemaVersion": 1,
+            "seq": 1,
+            "sessionId": "sqlite-root-session",
+            "source": "runtime",
+            "traceId": "sqlite-root-session",
+            "traceSchema": "openclaw-trajectory",
+            "ts": "2026-01-01T00:00:01.000Z",
+            "type": "trace.metadata"
+          }
+        ]
       },
       "session_id": "sqlite-root-session",
       "session_key": "agent:main:main",
@@ -181,7 +201,28 @@
             "event_type_counts": {
               "trace.metadata": 1
             },
-            "terminal_events": []
+            "events": [
+              {
+                "data": {
+                  "harness": {
+                    "version": "2026.7.1-2"
+                  },
+                  "model": {
+                    "name": "gpt-test",
+                    "provider": "openai"
+                  }
+                },
+                "runId": "sqlite-child-run",
+                "schemaVersion": 1,
+                "seq": 1,
+                "sessionId": "sqlite-child-session",
+                "source": "runtime",
+                "traceId": "sqlite-child-session",
+                "traceSchema": "openclaw-trajectory",
+                "ts": "2026-01-01T00:00:01.000Z",
+                "type": "trace.metadata"
+              }
+            ]
           },
           "session_id": "sqlite-child-session",
           "session_key": "agent:main:acp:child",

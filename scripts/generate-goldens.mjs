@@ -338,3 +338,135 @@ await convertOpenClawBundles({
   bundleRoot: mediaRoot,
   output: join(goldenRoot, "media"),
 });
+
+// Synthetic replay of the public event contract in OpenClaw 2026.9.3,
+// commit 1391f7cd2d40ab5bbcf2f5f831d3a64f520e72d7. Not a captured live run.
+const promptsRoot = join(bundlesRoot, "provider-prompts");
+const promptSession = "prompt-session";
+const promptEvents = [
+  event({
+    seq: 1,
+    source: "runtime",
+    type: "trace.metadata",
+    sessionId: promptSession,
+    data: { harness: { version: "2026.9.3" }, model: { provider: "openai", name: "gpt-5.6-luna" } },
+  }),
+  event({
+    seq: 2,
+    source: "runtime",
+    type: "context.compiled",
+    sessionId: promptSession,
+    data: { systemPrompt: "Use the tool.", tools: [] },
+  }),
+  event({
+    seq: 3,
+    source: "transcript",
+    type: "user.message",
+    sessionId: promptSession,
+    entryId: "u",
+    data: { message: { role: "user", content: "Test prompt metadata." } },
+  }),
+  event({
+    seq: 4,
+    source: "runtime",
+    type: "provider.prompt.observed",
+    sessionId: promptSession,
+    runId: "run-first",
+    data: {
+      egress: "responses-sdk",
+      payloadVariant: "initial",
+      promptSource: "input.developer",
+      expectedChars: 13,
+      observedChars: 13,
+      matchesAssembledPrompt: true,
+    },
+  }),
+  event({
+    seq: 5,
+    source: "transcript",
+    type: "assistant.message",
+    sessionId: promptSession,
+    entryId: "a1",
+    runId: "run-first",
+    data: {
+      message: {
+        role: "assistant",
+        content: "First response.",
+        usage: { input: 5, cacheRead: 2, output: 3, cost: { total: 0.001 } },
+      },
+    },
+  }),
+  event({
+    seq: 6,
+    source: "runtime",
+    type: "provider.prompt.observed",
+    sessionId: promptSession,
+    runId: "run-second",
+    data: {
+      egress: "responses-websocket",
+      payloadVariant: "reasoning-stripped",
+      promptSource: "missing",
+      expectedChars: 13,
+      observedChars: 0,
+      matchesAssembledPrompt: false,
+    },
+  }),
+  event({
+    seq: 7,
+    source: "runtime",
+    type: "provider.prompt.observed",
+    sessionId: promptSession,
+    runId: "run-second",
+    data: {
+      egress: "responses-sdk",
+      payloadVariant: "continuation-rejected",
+      promptSource: "instructions",
+      expectedChars: 13,
+      observedChars: 13,
+      matchesAssembledPrompt: true,
+    },
+  }),
+  event({
+    seq: 8,
+    source: "transcript",
+    type: "assistant.message",
+    sessionId: promptSession,
+    entryId: "a2",
+    runId: "run-second",
+    data: {
+      message: {
+        role: "assistant",
+        content: "Second response.",
+        usage: { input: 7, cacheRead: 1, output: 4, cost: { total: 0.002 } },
+      },
+    },
+  }),
+  event({
+    seq: 9,
+    source: "runtime",
+    type: "session.ended",
+    sessionId: promptSession,
+    runId: "run-second",
+    data: { reason: "completed" },
+  }),
+];
+await writeBundle(join(promptsRoot, "root"), "agent:main:main", promptSession, promptEvents);
+await writeFile(
+  join(promptsRoot, "graph.json"),
+  `${JSON.stringify(
+    {
+      schema: "openclaw-atif-bundle-graph-v1",
+      rootKey: "agent:main:main",
+      openclawVersion: "synthetic-provider-prompts-2026.9.3-1391f7c",
+      nodes: [{ sessionKey: "agent:main:main", bundleDir: "root" }],
+    },
+    null,
+    2,
+  )}\n`,
+);
+await convertOpenClawBundles({
+  graph: join(promptsRoot, "graph.json"),
+  bundleRoot: promptsRoot,
+  output: join(goldenRoot, "provider-prompts"),
+  requireComplete: true,
+});

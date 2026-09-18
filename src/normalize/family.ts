@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { type Diagnostic, deduplicateDiagnostics } from "../diagnostics.js";
 import type { OpenClawBundleV1 } from "../models/bundle-v1.js";
 import type { CapturedFamily, NormalizedNode, SessionFamilySnapshot } from "../models/family.js";
+import { classifyRuntimeEvent } from "../models/runtime-events.js";
 import { compareCodeUnits } from "../ordering.js";
 import { stableCompactStringify } from "../stable-json.js";
 
@@ -22,17 +23,6 @@ const KNOWN_TRANSCRIPT_EVENTS = new Set([
   "session.info",
 ]);
 const VOLATILE_GENERATED_FILES = ["metadata.json", "artifacts.json", "prompts.json"] as const;
-
-const KNOWN_RUNTIME_EVENTS = new Set([
-  "session.started",
-  "trace.metadata",
-  "context.compiled",
-  "prompt.submitted",
-  "model.fallback_step",
-  "model.completed",
-  "trace.artifacts",
-  "session.ended",
-]);
 
 function semanticHash(value: unknown): string {
   return createHash("sha256").update(stableCompactStringify(value)).digest("hex");
@@ -111,12 +101,19 @@ export function normalizeFamily(captured: CapturedFamily): SessionFamilySnapshot
           eventId: event.entryId,
         });
       }
+      const runtimeKind = classifyRuntimeEvent(event);
       const known =
         event.source === "transcript"
           ? KNOWN_TRANSCRIPT_EVENTS.has(event.type)
-          : event.source === "runtime"
-            ? KNOWN_RUNTIME_EVENTS.has(event.type)
-            : false;
+          : event.source === "runtime" && runtimeKind !== "unknown";
+      if (runtimeKind === "invalid") {
+        diagnostics.push({
+          code: "invalid-runtime-event",
+          message: `The public bundle contains malformed data for ${event.type}`,
+          nodeKey: key,
+          eventId: event.entryId,
+        });
+      }
       if (!known) {
         diagnostics.push({
           code: `unsupported-${event.source}-event`,

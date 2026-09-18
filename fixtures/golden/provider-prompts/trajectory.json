@@ -1,0 +1,216 @@
+{
+  "agent": {
+    "extra": {
+      "source_bundle": "openclaw-trajectory-v1",
+      "source_redacted": true,
+      "trace_metadata": {
+        "harness": {
+          "version": "2026.9.3"
+        },
+        "model": {
+          "name": "gpt-5.6-luna",
+          "provider": "openai"
+        }
+      }
+    },
+    "model_name": "openai/gpt-5.6-luna",
+    "name": "openclaw",
+    "version": "2026.9.3"
+  },
+  "extra": {
+    "openclaw": {
+      "bundle_warning_codes": [],
+      "leaf_id": "leaf-1",
+      "relationships": [],
+      "runtime": {
+        "event_type_counts": {
+          "context.compiled": 1,
+          "provider.prompt.observed": 3,
+          "session.ended": 1,
+          "trace.metadata": 1
+        },
+        "events": [
+          {
+            "data": {
+              "harness": {
+                "version": "2026.9.3"
+              },
+              "model": {
+                "name": "gpt-5.6-luna",
+                "provider": "openai"
+              }
+            },
+            "schemaVersion": 1,
+            "seq": 1,
+            "sessionId": "prompt-session",
+            "source": "runtime",
+            "traceId": "prompt-session",
+            "traceSchema": "openclaw-trajectory",
+            "ts": "2026-01-01T00:00:01.000Z",
+            "type": "trace.metadata"
+          },
+          {
+            "data": {
+              "egress": "responses-sdk",
+              "expectedChars": 13,
+              "matchesAssembledPrompt": true,
+              "observedChars": 13,
+              "payloadVariant": "initial",
+              "promptSource": "input.developer"
+            },
+            "runId": "run-first",
+            "schemaVersion": 1,
+            "seq": 4,
+            "sessionId": "prompt-session",
+            "source": "runtime",
+            "traceId": "prompt-session",
+            "traceSchema": "openclaw-trajectory",
+            "ts": "2026-01-01T00:00:04.000Z",
+            "type": "provider.prompt.observed"
+          },
+          {
+            "data": {
+              "egress": "responses-websocket",
+              "expectedChars": 13,
+              "matchesAssembledPrompt": false,
+              "observedChars": 0,
+              "payloadVariant": "reasoning-stripped",
+              "promptSource": "missing"
+            },
+            "runId": "run-second",
+            "schemaVersion": 1,
+            "seq": 6,
+            "sessionId": "prompt-session",
+            "source": "runtime",
+            "traceId": "prompt-session",
+            "traceSchema": "openclaw-trajectory",
+            "ts": "2026-01-01T00:00:06.000Z",
+            "type": "provider.prompt.observed"
+          },
+          {
+            "data": {
+              "egress": "responses-sdk",
+              "expectedChars": 13,
+              "matchesAssembledPrompt": true,
+              "observedChars": 13,
+              "payloadVariant": "continuation-rejected",
+              "promptSource": "instructions"
+            },
+            "runId": "run-second",
+            "schemaVersion": 1,
+            "seq": 7,
+            "sessionId": "prompt-session",
+            "source": "runtime",
+            "traceId": "prompt-session",
+            "traceSchema": "openclaw-trajectory",
+            "ts": "2026-01-01T00:00:07.000Z",
+            "type": "provider.prompt.observed"
+          },
+          {
+            "data": {
+              "reason": "completed"
+            },
+            "runId": "run-second",
+            "schemaVersion": 1,
+            "seq": 9,
+            "sessionId": "prompt-session",
+            "source": "runtime",
+            "traceId": "prompt-session",
+            "traceSchema": "openclaw-trajectory",
+            "ts": "2026-01-01T00:00:09.000Z",
+            "type": "session.ended"
+          }
+        ]
+      },
+      "session_id": "prompt-session",
+      "session_key": "agent:main:main",
+      "source_redacted": true,
+      "wrapper_only": false
+    }
+  },
+  "final_metrics": {
+    "extra": {
+      "scope": "own-trajectory-only"
+    },
+    "total_cached_tokens": 3,
+    "total_completion_tokens": 7,
+    "total_cost_usd": 0.003,
+    "total_prompt_tokens": 15,
+    "total_steps": 4
+  },
+  "schema_version": "ATIF-v1.8",
+  "session_id": "prompt-session",
+  "steps": [
+    {
+      "extra": {
+        "openclaw": {
+          "data": {
+            "systemPrompt": "Use the tool.",
+            "tools": []
+          },
+          "entry_id": null,
+          "event_type": "context.compiled"
+        }
+      },
+      "message": "Use the tool.",
+      "source": "system",
+      "step_id": 1,
+      "timestamp": "2026-01-01T00:00:02.000Z"
+    },
+    {
+      "extra": {
+        "openclaw": {
+          "entry_id": "u",
+          "event_type": "user.message"
+        }
+      },
+      "message": "Test prompt metadata.",
+      "source": "user",
+      "step_id": 2,
+      "timestamp": "2026-01-01T00:00:03.000Z"
+    },
+    {
+      "extra": {
+        "openclaw": {
+          "entry_id": "a1",
+          "error_message": null,
+          "stop_reason": null
+        }
+      },
+      "llm_call_count": 1,
+      "message": "First response.",
+      "metrics": {
+        "cached_tokens": 2,
+        "completion_tokens": 3,
+        "cost_usd": 0.001,
+        "prompt_tokens": 7
+      },
+      "model_name": "openai/gpt-5.6-luna",
+      "source": "agent",
+      "step_id": 3,
+      "timestamp": "2026-01-01T00:00:05.000Z"
+    },
+    {
+      "extra": {
+        "openclaw": {
+          "entry_id": "a2",
+          "error_message": null,
+          "stop_reason": null
+        }
+      },
+      "llm_call_count": 1,
+      "message": "Second response.",
+      "metrics": {
+        "cached_tokens": 1,
+        "completion_tokens": 4,
+        "cost_usd": 0.002,
+        "prompt_tokens": 8
+      },
+      "model_name": "openai/gpt-5.6-luna",
+      "source": "agent",
+      "step_id": 4,
+      "timestamp": "2026-01-01T00:00:08.000Z"
+    }
+  ],
+  "trajectory_id": "openclaw-899b403d742ee4fd6463372b67ab7256"
+}
