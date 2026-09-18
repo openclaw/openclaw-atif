@@ -1,6 +1,6 @@
 {
   "name": "openclaw-atif",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Export OpenClaw session families as Harbor ATIF trajectories",
   "type": "module",
   "license": "MIT",
