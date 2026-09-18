@@ -21,7 +21,7 @@
     "node": ">=24.11 <25"
   },
   "bin": {
-    "openclaw-atif": "./dist/cli-main.js"
+    "openclaw-atif": "dist/cli-main.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -33,10 +33,12 @@
   },
   "files": [
     "dist",
-    "docs",
     "LICENSE",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run coverage && npm run dry",
@@ -76,6 +78,7 @@
     "vitest": "4.1.11"
   },
   "overrides": {
-    "qs": "6.15.3"
+    "fast-uri": "3.1.6",
+    "qs": "6.16.0"
   }
 }

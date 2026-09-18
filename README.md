@@ -5,16 +5,16 @@ It uses OpenClaw's public trajectory bundles, includes linked native and ACP sub
 
 ## Install
 
-Install a published release from npm:
+Install the CLI from npm:
 
 ```bash
-npm install --global openclaw-atif@<version>
+npm install --global openclaw-atif
 ```
 
-Until a package release exists, install a tagged GitHub release:
+For library use, add it to your project:
 
 ```bash
-npm install --global github:osolmaz/openclaw-atif#<tag>
+npm install openclaw-atif
 ```
 
 Node.js 24.11 or newer in the Node.js 24 release line is required.

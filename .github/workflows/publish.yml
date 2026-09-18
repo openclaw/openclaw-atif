@@ -1,0 +1,81 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify release
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          PACKAGE_NAME="$(node -p 'require("./package.json").name')"
+          PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
+          PACKAGE_SPEC="$PACKAGE_NAME@$PACKAGE_VERSION"
+
+          if [[ "$RELEASE_TAG" != "v$PACKAGE_VERSION" ]]; then
+            echo "Release tag $RELEASE_TAG does not match package version $PACKAGE_VERSION" >&2
+            exit 1
+          fi
+
+          git fetch origin "$DEFAULT_BRANCH"
+          if ! git merge-base --is-ancestor HEAD "origin/$DEFAULT_BRANCH"; then
+            echo "The release commit is not on $DEFAULT_BRANCH" >&2
+            exit 1
+          fi
+
+          if npm view "$PACKAGE_SPEC" version >/tmp/npm-version 2>/tmp/npm-view-error; then
+            echo "$PACKAGE_SPEC is already published" >&2
+            exit 1
+          fi
+          if ! grep -q "E404" /tmp/npm-view-error; then
+            cat /tmp/npm-view-error >&2
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run check
+      - run: npm run mutate
+      - run: npm run slophammer
+      - run: npm run validate:harbor
+      - run: npm run smoke:cli
+      - name: Publish package
+        run: npm publish --provenance --access public
+      - name: Verify package
+        run: |
+          set -euo pipefail
+          PACKAGE_NAME="$(node -p 'require("./package.json").name')"
+          PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
+          for attempt in {1..12}; do
+            if [[ "$(npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version 2>/dev/null)" == "$PACKAGE_VERSION" ]]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "$PACKAGE_NAME@$PACKAGE_VERSION did not appear on npm" >&2
+          exit 1
