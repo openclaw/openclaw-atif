@@ -19,7 +19,13 @@ function isJsonValue(value: unknown): value is JsonValue {
 }
 
 export function isJsonObject(value: unknown): value is JsonObject {
-  return isPlainRecord(value) && Object.values(value).every(isJsonValue);
+  return (
+    isPlainRecord(value) &&
+    !Object.getOwnPropertySymbols(value).some((key) =>
+      Object.prototype.propertyIsEnumerable.call(value, key),
+    ) &&
+    Object.values(value).every(isJsonValue)
+  );
 }
 
 export function asRecord(value: unknown): Record<string, unknown> | undefined {

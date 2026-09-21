@@ -49,6 +49,7 @@ describe("ATIF schema", () => {
       ).toThrow();
     }
     expect(() => validateAtifTrajectory({ ...value, extra: Object.create(null) })).not.toThrow();
+    expect(() => validateAtifTrajectory({ ...value, extra: { [Symbol("invalid")]: 1 } })).toThrow();
   });
   it.each(["user", "system"])("rejects reasoning effort on %s steps", (source) => {
     for (const reasoning_effort of ["", 0, "high"]) {
