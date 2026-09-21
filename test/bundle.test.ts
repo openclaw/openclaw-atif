@@ -71,6 +71,43 @@ describe("loadOpenClawBundle", () => {
     }
   });
 
+  it.each(["fifo", "growth", "same-size"])(
+    "rejects %s replacement or mutation without leaking its descriptor",
+    async (mutation) => {
+      const root = await mkdtemp(join(tmpdir(), "openclaw-atif-bundle-read-race-"));
+      try {
+        const directory = await standardBundle(root);
+        const path = join(directory, "manifest.json");
+        const actualOpen = fs.open;
+        let opened: fs.FileHandle | undefined;
+        vi.spyOn(fs, "open").mockImplementationOnce(async (...args) => {
+          if (mutation === "fifo") {
+            await rm(path);
+            execFileSync("mkfifo", [path]);
+          }
+          const handle = await actualOpen(...args);
+          opened = handle;
+          if (mutation !== "fifo") {
+            const read = handle.read.bind(handle);
+            vi.spyOn(handle, "read").mockImplementationOnce(async (...readArgs) => {
+              if (mutation === "growth") await fs.appendFile(path, "extra");
+              else {
+                const original = await readFile(path);
+                await writeFile(path, Buffer.alloc(original.length, 32));
+              }
+              return read(...readArgs);
+            });
+          }
+          return handle;
+        });
+        await expect(loadOpenClawBundle(directory)).rejects.toThrow("changed while reading");
+        expect(opened?.fd).toBe(-1);
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+  );
+
   it("loads and validates a public bundle", async () => {
     const root = await mkdtemp(join(tmpdir(), "openclaw-atif-bundle-"));
     const bundle = await loadOpenClawBundle(await standardBundle(root));
@@ -209,3 +246,5 @@ describe("loadOpenClawBundle", () => {
     expect(bundle.sourceHashes["tools.json"]).toMatch(/^[a-f0-9]{64}$/u);
   });
 });
+
+import { execFileSync } from "node:child_process";
