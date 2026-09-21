@@ -11,6 +11,7 @@
   state during contention, and prevent no-force file commits from replacing concurrent output.
 - Preserve own `__proto__` JSON keys through bundle loading, tool arguments, validation, and serialization.
 - Align agent-only reasoning effort and zero-call dispatch validation with the pinned Harbor schema.
+- Update Zod to 4.6.5 while preserving minute-precision timestamps in the public ATIF validator.
 - Preserve media references with mixed-case HTTP, HTTPS, and data URI schemes.
 - Accept contained paths whose components begin with two dots without allowing parent traversal.
 - Reject capture cycles back to the selected root for every relationship kind.
