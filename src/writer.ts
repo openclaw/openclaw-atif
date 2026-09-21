@@ -134,7 +134,9 @@ async function withOutputLock<T>(
     await syncDirectory(dirname(canonical));
   } catch (error) {
     if (!outcome.ok)
-      throw new AggregateError([outcome.error, error], "Output write and lock release failed");
+      throw new AggregateError([outcome.error, error], "Output write and lock release failed", {
+        cause: error,
+      });
     throw error;
   }
   if (!outcome.ok) throw outcome.error;

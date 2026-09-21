@@ -48,7 +48,8 @@ describe("ATIF schema", () => {
         validateAtifTrajectory({ ...value, extra: Object.fromEntries([["__proto__", invalid]]) }),
       ).toThrow();
     }
-    expect(() => validateAtifTrajectory({ ...value, extra: Object.create(null) })).not.toThrow();
+    const empty: unknown = Object.create(null);
+    expect(() => validateAtifTrajectory({ ...value, extra: empty })).not.toThrow();
     expect(() => validateAtifTrajectory({ ...value, extra: { [Symbol("invalid")]: 1 } })).toThrow();
   });
   it.each(["user", "system"])("rejects reasoning effort on %s steps", (source) => {
