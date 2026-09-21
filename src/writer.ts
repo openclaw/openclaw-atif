@@ -174,6 +174,7 @@ async function writeLockedFile(
   signal?: AbortSignal,
 ): Promise<WriteResult> {
   const parent = dirname(destination);
+  await recoverDirectory(destination);
   const digest = sha256(content);
   if (await exists(destination)) {
     const details = await lstat(destination);

@@ -115,6 +115,10 @@ describe("destination ownership", () => {
       expect(await fs.readFile(journal, "utf8")).toBe(transaction);
       expect(await fs.readFile(join(backup, "a.json"), "utf8")).toBe("original");
       await fs.rm(lock);
+      await expect(writeAtomicFile(destination, "replacement")).rejects.toThrow(
+        "different content",
+      );
+      expect(await fs.readFile(join(destination, "a.json"), "utf8")).toBe("original");
       const result = await writeAtomicDirectory(
         `${destination}/`,
         new Map([["a.json", "original"]]),
