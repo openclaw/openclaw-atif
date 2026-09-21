@@ -181,6 +181,8 @@ async function captureAttempt(
     for (const relationship of discovered) {
       if (relationship.childKey === item.row.key)
         throw new Error("Session family contains a self-link");
+      if (relationship.childKey === root.key)
+        throw new Error("Session family contains a cycle back to the root");
       const priorParent = parentByChild.get(relationship.childKey);
       if (priorParent && priorParent !== relationship.parentKey)
         throw new Error(`Session ${relationship.childKey} has multiple parents`);

@@ -6,7 +6,7 @@ import { captureOpenClawFamily } from "../src/capture/family.js";
 import { exportOpenClawFamily } from "../src/exporter.js";
 import { childEvents, rootEvents, writeBundle } from "./helpers.js";
 
-async function fakeOpenClaw() {
+async function fakeOpenClaw(rootParentKind?: string) {
   const root = await mkdtemp(join(tmpdir(), "openclaw-atif-capture-"));
   const bundles = join(root, "bundles");
   await writeBundle({
@@ -25,7 +25,14 @@ async function fakeOpenClaw() {
   });
   const listing = {
     sessions: [
-      { key: "agent:main:main", sessionId: "root-session", updatedAt: 1 },
+      {
+        key: "agent:main:main",
+        sessionId: "root-session",
+        updatedAt: 1,
+        ...(rootParentKind
+          ? { parentSessionKey: "agent:main:subagent:child", kind: rootParentKind }
+          : {}),
+      },
       {
         key: "agent:main:subagent:child",
         sessionId: "child-session",
@@ -74,6 +81,24 @@ process.exit(2);
 }
 
 describe("captureOpenClawFamily", () => {
+  it.each(["visible-child", "unknown-child"])(
+    "rejects %s cycles back to the root",
+    async (kind) => {
+      const fake = await fakeOpenClaw(kind);
+      const staging = join(fake.root, "cycle-staging");
+      await (await import("node:fs/promises")).mkdir(staging, { mode: 0o700 });
+      await expect(
+        captureOpenClawFamily({
+          executable: fake.script,
+          openclawVersion: "test",
+          stagingRoot: staging,
+          sessionKey: "agent:main:main",
+          command: { env: { ...process.env, BUNDLE_ROOT: fake.bundles } },
+        }),
+      ).rejects.toThrow("cycle back to the root");
+    },
+  );
+
   it("captures and reconciles a stable public session family", async () => {
     const fake = await fakeOpenClaw();
     const staging = join(fake.root, "staging");

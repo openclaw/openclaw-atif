@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Reject capture cycles back to the selected root for every relationship kind.
 - Skip non-file PATH entries when resolving the OpenClaw executable.
 - Preserve cancellation during OpenClaw capability probing instead of reporting missing export support.
 - Read bundle and media files through one bounded descriptor lifecycle, rejecting file races
