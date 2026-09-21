@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Update checkout to v7.0.1 in CI, CodeQL analysis, and publishing.
 - Resume interrupted legacy journal adoption when both marker names identify the same verified file.
 - Preserve implicit empty legacy agent rosters for OpenClaw's main-agent migration.
 - Recover verified v0.1.1 transactions created with trailing-slash destinations without touching ambiguous backups.
