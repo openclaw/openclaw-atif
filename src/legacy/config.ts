@@ -88,7 +88,7 @@ function projectAgents(value: unknown, workspace: string): Record<string, unknow
     );
   }
   if (
-    ids.size === 0 ||
+    (ids.size === 0 && source.ownership === "explicit") ||
     defaults > 1 ||
     (defaults > 0 && source.ownership === "explicit") ||
     (ids.size > 1 && defaults === 0 && source.ownership !== "explicit")

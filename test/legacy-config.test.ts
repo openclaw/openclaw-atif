@@ -68,12 +68,35 @@ describe("private migration config", () => {
     }
   });
 
+  it.each([{ list: [] }, { entries: {} }])(
+    "preserves implicit empty rosters %j",
+    async (agents) => {
+      const root = await mkdtemp(join(tmpdir(), "openclaw-atif-empty-roster-"));
+      const source = join(root, "source");
+      await mkdir(source);
+      try {
+        await writeFile(join(source, "openclaw.json"), JSON.stringify({ agents }));
+        const result = await prepareMigrationRuntime({
+          source,
+          sourceArgument: source,
+          destination: source,
+          stagingRoot: root,
+        });
+        const config: unknown = JSON.parse(await readFile(result.configPath, "utf8"));
+        expect(config).toMatchObject({ agents });
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+  );
+
   it.each([
     { $include: "external.json" },
     { agents: { ownership: "explicit" } },
     { agents: { list: [], entries: {} } },
     { agents: { list: "invalid" } },
-    { agents: { list: [] } },
+    { agents: { ownership: "explicit", list: [] } },
+    { agents: { ownership: "explicit", entries: {} } },
     { agents: { list: [{ id: "../outside" }] } },
     { agents: { list: [{ id: "main" }, { id: "MAIN" }] } },
     {
