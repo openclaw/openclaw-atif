@@ -19,6 +19,11 @@ npm install @openclaw/openclaw-atif
 
 Node.js 24.11 or newer in the Node.js 24 release line is required.
 
+Live OpenClaw capture uses POSIX executables and owner-only filesystem permissions
+on Linux, macOS, or WSL. Native Windows capture is not yet qualified: it needs
+launcher resolution, process-tree cancellation, and permission verification.
+This does not restrict the library's in-memory trajectory mapping APIs.
+
 ## Export a session family
 
 Select the root by its exact OpenClaw session key:
@@ -49,6 +54,14 @@ media/          # retained image/audio files, when present
 
 Supported bundle-local media is copied into `media/` and referenced by relative paths. Keep this directory beside `trajectory.json`. Retention is limited to 64 files per family and 32 MiB per file. Remote references are not downloaded. Missing, unsafe, or unsupported media makes the output partial.
 
+Writers lock the canonical destination, including when reached through a parent
+directory alias or a trailing slash. A competing writer fails with the lock path
+and owner. A hard crash leaves the lock in place: verify that the named process
+has terminated, remove only that exact lock, and retry to recover the transaction.
+Locks are never stolen based on age or a PID check. Directory replacement is
+serialized between OpenClaw ATIF writers; an unrelated process creating an empty
+destination directory during the final rename remains outside that guarantee.
+
 Use `--require-complete` when partial output is not acceptable:
 
 ```bash
@@ -59,6 +72,10 @@ openclaw-atif export \
 ```
 
 ## Convert existing OpenClaw bundles
+
+Use quiescent local bundle directories whose parent directories you control.
+File snapshot and symlink checks detect leaf replacement and file mutations;
+pathname checks provide no filesystem sandbox against concurrent ancestor changes.
 
 Create a bundle graph that names the root and each captured bundle:
 
@@ -96,7 +113,7 @@ openclaw-atif convert \
 
 OpenClaw versions with `sessions export-trajectory` own their JSONL or SQLite storage and need no special handling.
 
-For an older archive without that command, use explicit migration-on-copy. This copies the state into private temporary storage, uses OpenClaw's targeted migration commands when available or its documented non-interactive repair path otherwise, verifies the public session listing, exports it, and removes the copy:
+For an older archive without that command, use explicit migration-on-copy. This copies the state into private temporary storage, validates a separate JSON5-derived config, runs OpenClaw's targeted session migration commands, verifies the public session listing, exports it, and removes the copy:
 
 ```bash
 openclaw-atif export \
@@ -108,7 +125,17 @@ openclaw-atif export \
   --output ./openclaw-trajectory
 ```
 
-The source state is not modified.
+The migration executable must support `config validate --json` and targeted
+`doctor --session-sqlite` operations with `--session-sqlite-all-agents`. Unsupported
+versions fail with an upgrade instruction; broad `doctor --fix` is never used.
+Config selectors must be self-contained: resolve includes and environment
+substitutions first. The copy uses a private home, working directory, temporary
+directory, and config with plugins disabled. Original workspace, agent-directory,
+logging, and environment paths are excluded. This preserves the source state;
+it is not an operating-system sandbox for the selected OpenClaw executable.
+
+Hosted CI exercises real migration and export with pinned OpenClaw `2026.9.5`,
+synthetic legacy data, and unchanged original config/home/workspace sentinels.
 
 ## Source and privacy limits
 

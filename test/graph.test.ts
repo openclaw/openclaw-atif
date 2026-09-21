@@ -48,11 +48,11 @@ describe("bundle graph", () => {
     }
   });
 
-  it("accepts a bundle located directly at the declared bundle root", async () => {
+  it.each([".", "..bundle"])("accepts contained bundle path %s", async (bundleDir) => {
     const root = await mkdtemp(join(tmpdir(), "openclaw-atif-graph-"));
     const bundle = await writeBundle({
       root,
-      name: "bundle",
+      name: bundleDir === "." ? "bundle" : bundleDir,
       sessionId: "session",
       sessionKey: "root",
       events: childEvents("session"),
@@ -64,10 +64,12 @@ describe("bundle graph", () => {
         schema: "openclaw-atif-bundle-graph-v1",
         rootKey: "root",
         openclawVersion: "test",
-        nodes: [{ sessionKey: "root", bundleDir: "." }],
+        nodes: [{ sessionKey: "root", bundleDir }],
       }),
     );
-    expect((await loadCapturedFamilyFromGraph(graphPath, bundle)).nodes.size).toBe(1);
+    expect(
+      (await loadCapturedFamilyFromGraph(graphPath, bundleDir === "." ? bundle : root)).nodes.size,
+    ).toBe(1);
   });
 
   it("derives exact spawn evidence and rejects caller-supplied evidence that is not proven", async () => {

@@ -125,7 +125,6 @@
           "stop_reason": null
         }
       },
-      "llm_call_count": 1,
       "message": "Starting a child.",
       "metrics": {
         "cached_tokens": 2,
@@ -262,7 +261,6 @@
               "stop_reason": null
             }
           },
-          "llm_call_count": 1,
           "message": "Done.",
           "metrics": {
             "completion_tokens": 1,

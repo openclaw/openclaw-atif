@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { constants, type Stats } from "node:fs";
-import { type FileHandle, lstat, open, realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { Diagnostic } from "../diagnostics.js";
 import { asRecord } from "../json.js";
+import { readStableFile, StableFileError } from "../stable-file.js";
 import { type AtifContentPart, contentPartSchema } from "./schema.js";
 
 export const MAX_MEDIA_FILES = 64;
@@ -40,16 +40,6 @@ function firstValue(record: Record<string, unknown>, keys: string[]): unknown {
   return keys.map((key) => record[key]).find((value) => value !== undefined && value !== null);
 }
 
-function sameSnapshot(left: Stats, right: Stats): boolean {
-  return (
-    left.dev === right.dev &&
-    left.ino === right.ino &&
-    left.size === right.size &&
-    left.mtimeMs === right.mtimeMs &&
-    left.ctimeMs === right.ctimeMs
-  );
-}
-
 function sourceRecord(
   block: Record<string, unknown>,
   type: "image" | "audio",
@@ -84,8 +74,8 @@ function externalReference(path: string): boolean {
   if (!/^[a-z][a-z0-9+.-]*:/i.test(path)) return false;
   try {
     const url = new URL(path);
-    if (/^https?:\/\//.test(path) && url.hostname) return true;
-    if (url.protocol === "data:" && /^data:[^,]+,/.test(path)) return true;
+    if (/^https?:\/\//i.test(path) && url.hostname) return true;
+    if (url.protocol === "data:" && /^data:[^,]+,/i.test(path)) return true;
   } catch {
     /* Invalid locations are omitted, not interpreted as file names. */
   }
@@ -118,38 +108,12 @@ async function containedFile(root: string, location: string): Promise<string> {
   return path;
 }
 
-async function boundedRead(handle: FileHandle, size: number): Promise<Buffer> {
-  // Read one extra byte so growth cannot be mistaken for a stable source.
-  const bytes = Buffer.alloc(size + 1);
-  let length = 0;
-  while (length < bytes.length) {
-    const result = await handle.read(bytes, length, bytes.length - length, length);
-    if (result.bytesRead === 0) break;
-    length += result.bytesRead;
-  }
-  if (length !== size) throw new MediaError("media-file-changed");
-  return Buffer.from(bytes.subarray(0, length));
-}
-
 async function readMedia(root: string, location: string): Promise<Buffer> {
-  const path = await containedFile(root, location);
-  const before = await lstat(path);
-  if (!before.isFile()) throw new MediaError("media-not-regular-file");
-  if (before.size > MAX_MEDIA_BYTES) throw new MediaError("media-file-too-large");
-  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
-    const opened = await handle.stat();
-    if (!opened.isFile() || !sameSnapshot(opened, before))
-      throw new MediaError("media-file-changed");
-    const bytes = await boundedRead(handle, before.size);
-    const after = await handle.stat();
-    const finalPath = await containedFile(root, location);
-    const final = await lstat(finalPath);
-    if (!sameSnapshot(after, before) || !sameSnapshot(final, before))
-      throw new MediaError("media-file-changed");
-    return bytes;
-  } finally {
-    await handle.close();
+    return await readStableFile(() => containedFile(root, location), MAX_MEDIA_BYTES);
+  } catch (error) {
+    if (error instanceof StableFileError) throw new MediaError(`media-${error.code}`);
+    throw error;
   }
 }
 
