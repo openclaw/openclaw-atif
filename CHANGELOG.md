@@ -16,7 +16,7 @@
 - Reject capture cycles back to the selected root for every relationship kind.
 - Skip non-file PATH entries when resolving the OpenClaw executable.
 - Preserve cancellation during OpenClaw capability probing instead of reporting missing export support.
-- Read bundle and media files through one bounded descriptor lifecycle, rejecting file races
+- Read bundle and media files through one bounded descriptor lifecycle, rejecting leaf replacement and detected file mutations
   and enforcing the bundle's aggregate byte limit before each read.
 - Stop Harbor validation when fixture discovery fails, including after partial results.
 - Encode real-OpenClaw smoke fixture paths safely as JSON.
