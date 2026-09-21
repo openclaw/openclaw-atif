@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Preserve cancellation during OpenClaw capability probing instead of reporting missing export support.
 - Read bundle and media files through one bounded descriptor lifecycle, rejecting file races
   and enforcing the bundle's aggregate byte limit before each read.
 - Stop Harbor validation when fixture discovery fails, including after partial results.
