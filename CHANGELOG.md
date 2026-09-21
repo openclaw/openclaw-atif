@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Omit unobserved LLM call counts instead of treating every assistant transcript
+  entry, including local delivery mirrors, as a model call.
 - Add repository ownership, contribution and security guidance, issue and pull
   request templates, dependency-update configuration, and the canonical autoreview skill.
 
