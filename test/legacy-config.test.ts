@@ -16,7 +16,7 @@ describe("private migration config", () => {
         `{
         // Only public ownership and store selectors survive.
         agents: { ownership: 'explicit', entries: {
-          main: { workspace: '${OMITTED_WORKSPACE}', agentDir: '/external/agent',
+          main: { workspace: '\${OMITTED_WORKSPACE}', agentDir: '/external/agent',
             runtime: { type: 'acp', acp: { agent: 'claude', cwd: '/external/cwd', backend: 'omitted' } } },
         }, defaults: { sessionStore: { agentId: 'main' }, systemAgent: { agentId: 'main' } } },
         acp: { defaultAgent: 'claude', allowedAgents: ['claude'], backend: 'omitted' },
