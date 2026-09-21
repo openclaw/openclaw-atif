@@ -122,6 +122,13 @@ export async function prepareMigrationRuntime(params: {
   const temporary = join(root, "tmp");
   const workspace = join(root, "workspace");
   for (const path of [home, temporary, workspace]) await mkdir(path, { mode: 0o700 });
+  const xdg = Object.fromEntries(
+    ["CONFIG", "DATA", "CACHE", "STATE", "RUNTIME"].map((kind) => [
+      `XDG_${kind}${kind === "RUNTIME" ? "_DIR" : "_HOME"}`,
+      join(home, kind.toLowerCase()),
+    ]),
+  );
+  for (const path of Object.values(xdg)) await mkdir(path, { mode: 0o700 });
   const original = await readConfig(params.destination);
   const config: Record<string, unknown> = {
     agents: projectAgents(original.agents, workspace),
@@ -158,9 +165,7 @@ export async function prepareMigrationRuntime(params: {
     OPENCLAW_STATE_DIR: params.destination,
     OPENCLAW_CONFIG_PATH: configPath,
     ZDOTDIR: home,
-    XDG_CONFIG_HOME: join(home, ".config"),
-    XDG_DATA_HOME: join(home, ".local/share"),
-    XDG_CACHE_HOME: join(home, ".cache"),
+    ...xdg,
     TMPDIR: temporary,
     TMP: temporary,
     TEMP: temporary,

@@ -59,6 +59,8 @@ describe("private migration config", () => {
       expect(result.command.env?.OPENCLAW_CONFIG_PATH).toBe(result.configPath);
       expect(result.command.env?.HOME).toBe(result.command.env?.USERPROFILE);
       expect(result.command.env?.HOME).not.toBe("/external/home");
+      expect(result.command.env?.XDG_STATE_HOME).toContain("legacy-runtime/home/state");
+      expect(result.command.env?.XDG_RUNTIME_DIR).toContain("legacy-runtime/home/runtime");
       expect(await readFile(join(destination, ".env"), "utf8")).toBe("");
       expect(await readFile(join(source, ".env"), "utf8")).toContain("/external/config");
     } finally {
