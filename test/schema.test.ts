@@ -36,6 +36,46 @@ function trajectory(): AtifTrajectory {
 }
 
 describe("ATIF schema", () => {
+  it.each(["user", "system"])("rejects reasoning effort on %s steps", (source) => {
+    for (const reasoning_effort of ["", 0, "high"]) {
+      expect(() =>
+        validateAtifTrajectory({
+          ...trajectory(),
+          steps: [{ step_id: 1, source, message: "message", reasoning_effort }],
+        }),
+      ).toThrow("Agent-only");
+    }
+  });
+
+  it.each([false, true])("rejects LLM fields on zero-call steps with nested=%s", (nested) => {
+    for (const extra of [{ metrics: {} }, { reasoning_content: "" }]) {
+      const value = trajectory();
+      const target = nested ? value.subagent_trajectories?.[0] : value;
+      if (!target) throw new Error("Missing test trajectory");
+      target.steps = [
+        { step_id: 1, source: "agent", message: "dispatch", llm_call_count: 0, ...extra },
+      ];
+      expect(() => validateAtifTrajectory(value)).toThrow("llm_call_count is 0");
+    }
+  });
+
+  it("accepts deterministic dispatch metadata and non-agent call counts", () => {
+    const value = trajectory();
+    const step = value.steps[0];
+    if (!step) throw new Error("Missing test step");
+    step.llm_call_count = 0;
+    step.model_name = "test";
+    step.reasoning_effort = "low";
+    expect(validateAtifTrajectory(value)).toEqual(value);
+    for (const source of ["user", "system"])
+      expect(() =>
+        validateAtifTrajectory({
+          ...value,
+          steps: [{ step_id: 1, source, message: "event", llm_call_count: 0 }],
+        }),
+      ).not.toThrow();
+  });
+
   it("accepts recursive ATIF-v1.8 trajectories", () => {
     expect(validateAtifTrajectory(trajectory()).subagent_trajectories).toHaveLength(1);
   });

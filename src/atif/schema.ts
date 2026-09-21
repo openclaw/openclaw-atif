@@ -277,6 +277,7 @@ function validateTrajectory(trajectory: AtifTrajectory, context: z.RefinementCtx
     if (
       step.source !== "agent" &&
       (step.model_name !== undefined ||
+        step.reasoning_effort !== undefined ||
         step.reasoning_content !== undefined ||
         step.tool_calls !== undefined ||
         step.metrics !== undefined)
@@ -285,6 +286,17 @@ function validateTrajectory(trajectory: AtifTrajectory, context: z.RefinementCtx
         code: "custom",
         path: ["steps", index],
         message: "Agent-only fields require source agent",
+      });
+    }
+    if (
+      step.source === "agent" &&
+      step.llm_call_count === 0 &&
+      (step.metrics !== undefined || step.reasoning_content !== undefined)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["steps", index],
+        message: "Metrics and reasoning_content must be absent when llm_call_count is 0",
       });
     }
     const callIds = new Set(step.tool_calls?.map((call) => call.tool_call_id) ?? []);
