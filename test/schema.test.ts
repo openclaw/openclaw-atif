@@ -36,6 +36,41 @@ function trajectory(): AtifTrajectory {
 }
 
 describe("ATIF schema", () => {
+  it.each([
+    "2026-09-21T07:34Z",
+    "2026-09-21T07:34+02:00",
+    "2026-09-21T07:34-05:30",
+    "2026-09-21T07:34:12Z",
+    "2026-09-21T07:34:12.123456+02:00",
+  ])("preserves timestamp bytes at every trajectory level: %s", (timestamp) => {
+    const value = trajectory();
+    for (const target of [value, ...(value.subagent_trajectories ?? [])]) {
+      const step = target.steps[0];
+      if (!step) throw new Error("Missing test step");
+      step.timestamp = timestamp;
+    }
+    expect(validateAtifTrajectory(value)).toEqual(value);
+  });
+
+  it.each([
+    "2026-02-29T07:34Z",
+    "2026-09-21T24:00Z",
+    "2026-09-21T07:60Z",
+    "2026-09-21T07:34+24:00",
+    "2026-09-21T07:34+02:60",
+    "2026-09-21T07:34+0200",
+    "2026-09-21T07:34",
+  ])("rejects invalid timestamps at every trajectory level: %s", (timestamp) => {
+    for (const nested of [false, true]) {
+      const value = trajectory();
+      const target = nested ? value.subagent_trajectories?.[0] : value;
+      const step = target?.steps[0];
+      if (!step) throw new Error("Missing test step");
+      step.timestamp = timestamp;
+      expect(() => validateAtifTrajectory(value)).toThrow();
+    }
+  });
+
   it("preserves every own JSON key and rejects invalid values under __proto__", () => {
     const extra: unknown = JSON.parse('{"__proto__":{"nested":[1,true,null]}}');
     const value = { ...trajectory(), extra };

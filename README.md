@@ -73,6 +73,10 @@ openclaw-atif export \
 
 ## Convert existing OpenClaw bundles
 
+Use quiescent local bundle directories whose parent directories you control.
+File snapshot and symlink checks detect leaf replacement and file mutations;
+pathname checks provide no filesystem sandbox against concurrent ancestor changes.
+
 Create a bundle graph that names the root and each captured bundle:
 
 ```json

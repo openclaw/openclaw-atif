@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Resume interrupted legacy journal adoption when both marker names identify the same verified file.
+- Preserve implicit empty legacy agent rosters for OpenClaw's main-agent migration.
 - Recover verified v0.1.1 transactions created with trailing-slash destinations without touching ambiguous backups.
 - Confine legacy migration and subsequent capture to a private config and environment,
   parse JSON5 selectors, validate public migration reports, and require targeted migration support.
@@ -9,12 +11,13 @@
   state during contention, and prevent no-force file commits from replacing concurrent output.
 - Preserve own `__proto__` JSON keys through bundle loading, tool arguments, validation, and serialization.
 - Align agent-only reasoning effort and zero-call dispatch validation with the pinned Harbor schema.
+- Update Zod to 4.6.5 while preserving minute-precision timestamps in the public ATIF validator.
 - Preserve media references with mixed-case HTTP, HTTPS, and data URI schemes.
 - Accept contained paths whose components begin with two dots without allowing parent traversal.
 - Reject capture cycles back to the selected root for every relationship kind.
 - Skip non-file PATH entries when resolving the OpenClaw executable.
 - Preserve cancellation during OpenClaw capability probing instead of reporting missing export support.
-- Read bundle and media files through one bounded descriptor lifecycle, rejecting file races
+- Read bundle and media files through one bounded descriptor lifecycle, rejecting leaf replacement and detected file mutations
   and enforcing the bundle's aggregate byte limit before each read.
 - Stop Harbor validation when fixture discovery fails, including after partial results.
 - Encode real-OpenClaw smoke fixture paths safely as JSON.
