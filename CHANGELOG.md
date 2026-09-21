@@ -17,6 +17,7 @@
 - Accept contained paths whose components begin with two dots without allowing parent traversal.
 - Reject capture cycles back to the selected root for every relationship kind.
 - Skip non-file PATH entries when resolving the OpenClaw executable.
+- Refresh Node.js declarations to 24.13.6 while retaining the supported Node.js 24 API boundary.
 - Preserve cancellation during OpenClaw capability probing instead of reporting missing export support.
 - Read bundle and media files through one bounded descriptor lifecycle, rejecting leaf replacement and detected file mutations
   and enforcing the bundle's aggregate byte limit before each read.
