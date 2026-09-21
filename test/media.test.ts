@@ -49,6 +49,9 @@ describe("media retention", () => {
     "https://example.test/p.png",
     "http://example.test/p.png",
     "data:image/png;base64,AA==",
+    "hTtPs://example.test/Case.png?Token=AbC",
+    "HtTp://example.test/Case.png?Token=AbC",
+    "DaTa:image/png;base64,AA==",
   ])("preserves %s without filesystem access or fetching", async (path) => {
     const f = await fixture();
     const open = vi.spyOn(fs, "open");
@@ -63,6 +66,10 @@ describe("media retention", () => {
         source: { media_type: "image/png", path },
       });
     }
+    expect(await f.part({ source: { media_type: "audio/wav", path } }, "audio")).toEqual({
+      type: "audio",
+      source: { media_type: "audio/wav", path },
+    });
     expect(open).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
     expect(f.store.files.size).toBe(0);

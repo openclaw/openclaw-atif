@@ -74,8 +74,8 @@ function externalReference(path: string): boolean {
   if (!/^[a-z][a-z0-9+.-]*:/i.test(path)) return false;
   try {
     const url = new URL(path);
-    if (/^https?:\/\//.test(path) && url.hostname) return true;
-    if (url.protocol === "data:" && /^data:[^,]+,/.test(path)) return true;
+    if (/^https?:\/\//i.test(path) && url.hostname) return true;
+    if (url.protocol === "data:" && /^data:[^,]+,/i.test(path)) return true;
   } catch {
     /* Invalid locations are omitted, not interpreted as file names. */
   }
