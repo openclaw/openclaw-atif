@@ -25,6 +25,7 @@ async function findExecutable(value: string): Promise<string> {
     const candidate = join(directory, value);
     try {
       await access(candidate, constants.X_OK);
+      if (!(await stat(candidate)).isFile()) continue;
       return candidate;
     } catch {
       // Continue through PATH.
@@ -49,27 +50,39 @@ export function runCommand(
 ): Promise<CommandResult> {
   const timeoutMs = options.timeoutMs ?? 30_000;
   const maxBytes = options.maxOutputBytes ?? 4 * 1024 * 1024;
+  if (options.signal?.aborted)
+    return Promise.reject(new DOMException("OpenClaw command was interrupted", "AbortError"));
   return new Promise((resolve, reject) => {
     const child = spawn(executable, [...args], {
       cwd: options.cwd,
       env: options.env,
       stdio: ["ignore", "pipe", "pipe"],
       shell: false,
+      // Packaged OpenClaw may respawn its CLI. Own that POSIX process group so
+      // cancellation stops every writer before callers remove private staging.
+      detached: process.platform !== "win32",
     });
     const output = { stdout: [] as Buffer[], stderr: [] as Buffer[], bytes: 0 };
-    let finished = false;
+    let failure: Error | undefined;
     const cleanup = () => {
       clearTimeout(timer);
       options.signal?.removeEventListener("abort", abort);
     };
     const fail = (error: Error) => {
-      if (finished) return;
-      finished = true;
-      cleanup();
-      child.kill("SIGKILL");
-      reject(error);
+      if (failure) return;
+      failure = error;
+      if (!child.pid) return;
+      try {
+        if (process.platform === "win32") child.kill("SIGKILL");
+        else process.kill(-child.pid, "SIGKILL");
+      } catch (killError) {
+        // A group that exited while cancellation was delivered needs no kill.
+        if ((killError as NodeJS.ErrnoException).code !== "ESRCH")
+          failure = new AggregateError([error, killError], "OpenClaw command termination failed");
+      }
     };
     const collect = (target: "stdout" | "stderr", chunk: Buffer) => {
+      if (failure) return;
       output.bytes += chunk.length;
       if (output.bytes > maxBytes) {
         fail(new Error(`OpenClaw command output exceeded ${String(maxBytes)} bytes`));
@@ -85,9 +98,12 @@ export function runCommand(
     });
     child.once("error", fail);
     child.once("close", (code, signal) => {
-      if (finished) return;
-      finished = true;
       cleanup();
+      // Unlike exit, close waits for inherited stdout/stderr handles to close.
+      if (failure) {
+        reject(failure);
+        return;
+      }
       if (signal) {
         reject(new Error(`OpenClaw command terminated by ${signal}`));
         return;

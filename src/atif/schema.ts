@@ -1,6 +1,6 @@
 /* eslint-disable complexity -- Recursive ATIF cross-field validation is explicit. */
 import { z } from "zod";
-import type { JsonObject, JsonValue } from "../json.js";
+import { isJsonObject, type JsonObject, type JsonValue } from "../json.js";
 import { ATIF_VERSION } from "../version.js";
 
 export type { JsonObject, JsonValue };
@@ -103,17 +103,8 @@ export interface AtifTrajectory {
   subagent_trajectories?: AtifTrajectory[];
 }
 
-const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
-  z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.null(),
-    z.array(jsonValueSchema),
-    z.record(z.string(), jsonValueSchema),
-  ]),
-);
-const jsonObjectSchema = z.record(z.string(), jsonValueSchema);
+// Zod records omit __proto__; JSON payloads must validate and retain every own key.
+const jsonObjectSchema = z.custom<JsonObject>(isJsonObject);
 export const contentPartSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string() }).strict(),
   z
@@ -277,6 +268,7 @@ function validateTrajectory(trajectory: AtifTrajectory, context: z.RefinementCtx
     if (
       step.source !== "agent" &&
       (step.model_name !== undefined ||
+        step.reasoning_effort !== undefined ||
         step.reasoning_content !== undefined ||
         step.tool_calls !== undefined ||
         step.metrics !== undefined)
@@ -285,6 +277,17 @@ function validateTrajectory(trajectory: AtifTrajectory, context: z.RefinementCtx
         code: "custom",
         path: ["steps", index],
         message: "Agent-only fields require source agent",
+      });
+    }
+    if (
+      step.source === "agent" &&
+      step.llm_call_count === 0 &&
+      (step.metrics !== undefined || step.reasoning_content !== undefined)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["steps", index],
+        message: "Metrics and reasoning_content must be absent when llm_call_count is 0",
       });
     }
     const callIds = new Set(step.tool_calls?.map((call) => call.tool_call_id) ?? []);

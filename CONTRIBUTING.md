@@ -62,6 +62,9 @@ publishing the GitHub Release. Never move an existing release tag.
 The `Publish` workflow revalidates the release and publishes through npm trusted
 publishing. Its identity is `openclaw/openclaw-atif`, workflow `publish.yml`, with
 no GitHub environment. Do not add npm tokens or publish a real release locally.
+CI and publishing use the same pinned npm version and pack the checked build once.
+The workflow smoke-installs that tarball, publishes it without lifecycle scripts,
+and verifies the registry's integrity, shasum, and provenance metadata.
 
 The `0.0.0` npm bootstrap is a package-name reservation only. It is not a
 functional exporter and must not replace the source package version.

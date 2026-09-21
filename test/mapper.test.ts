@@ -76,6 +76,37 @@ async function buildFamily(
 }
 
 describe("mapFamilyToAtif", () => {
+  it("omits unobserved LLM call counts for ordinary and locally mirrored assistants", async () => {
+    const family = await buildFamily();
+    const root = family.nodes.get(family.rootKey);
+    if (!root) throw new Error("fixture root is missing");
+    root.transcriptEvents.push(
+      event({
+        seq: 100,
+        source: "transcript",
+        type: "assistant.message",
+        sessionId: root.sessionId,
+        entryId: "delivery-mirror",
+        data: {
+          message: {
+            role: "assistant",
+            provider: "openclaw",
+            model: "delivery-mirror",
+            content: "Delivered locally.",
+            usage: { input: 0, output: 0, cost: { total: 0 } },
+          },
+        },
+      }),
+    );
+    const { trajectory } = await mapFamilyToAtif(family);
+    const assistants = trajectory.steps.filter((step) => step.source === "agent");
+    expect(assistants).toHaveLength(2);
+    expect(assistants.map((step) => step.message)).toContain("Delivered locally.");
+    for (const step of assistants) expect(step).not.toHaveProperty("llm_call_count");
+    for (const step of trajectory.subagent_trajectories?.[0]?.steps ?? [])
+      expect(step).not.toHaveProperty("llm_call_count");
+  });
+
   it("maps a recursive subagent family with deterministic IDs and own metrics", async () => {
     const first = await mapFamilyToAtif(await buildFamily());
     const second = await mapFamilyToAtif(await buildFamily());

@@ -177,7 +177,6 @@
           "stop_reason": null
         }
       },
-      "llm_call_count": 1,
       "message": "First response.",
       "metrics": {
         "cached_tokens": 2,
@@ -198,7 +197,6 @@
           "stop_reason": null
         }
       },
-      "llm_call_count": 1,
       "message": "Second response.",
       "metrics": {
         "cached_tokens": 1,

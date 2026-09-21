@@ -1,12 +1,11 @@
 function normalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalize);
   if (value !== null && typeof value === "object") {
-    const result: Record<string, unknown> = {};
-    for (const key of Object.keys(value).sort()) {
-      const child = (value as Record<string, unknown>)[key];
-      result[key] = normalize(child);
-    }
-    return result;
+    return Object.fromEntries<unknown>(
+      Object.keys(value)
+        .sort()
+        .map((key) => [key, normalize((value as Record<string, unknown>)[key])]),
+    );
   }
   return value;
 }
