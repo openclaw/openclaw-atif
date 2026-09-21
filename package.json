@@ -7,10 +7,10 @@
   "author": "Onur Solmaz",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/osolmaz/openclaw-atif.git"
+    "url": "git+https://github.com/openclaw/openclaw-atif.git"
   },
-  "homepage": "https://github.com/osolmaz/openclaw-atif#readme",
-  "bugs": "https://github.com/osolmaz/openclaw-atif/issues",
+  "homepage": "https://github.com/openclaw/openclaw-atif#readme",
+  "bugs": "https://github.com/openclaw/openclaw-atif/issues",
   "keywords": [
     "openclaw",
     "atif",
