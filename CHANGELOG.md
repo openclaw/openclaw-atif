@@ -12,6 +12,7 @@
 - Preserve own `__proto__` JSON keys through bundle loading, tool arguments, validation, and serialization.
 - Update TypeScript to 6.0.3, retaining the compiler API used by lint and mutation checks.
 - Align agent-only reasoning effort and zero-call dispatch validation with the pinned Harbor schema.
+- Update Zod to 4.6.5 while preserving minute-precision timestamps in the public ATIF validator.
 - Preserve media references with mixed-case HTTP, HTTPS, and data URI schemes.
 - Accept contained paths whose components begin with two dots without allowing parent traversal.
 - Reject capture cycles back to the selected root for every relationship kind.
@@ -20,10 +21,13 @@
 - Read bundle and media files through one bounded descriptor lifecycle, rejecting leaf replacement and detected file mutations
   and enforcing the bundle's aggregate byte limit before each read.
 - Stop Harbor validation when fixture discovery fails, including after partial results.
+- Update setup-python to v7.0.0 for CI and publishing validation with Python 3.12.
 - Encode real-OpenClaw smoke fixture paths safely as JSON.
 - Serialize npm publication and reject stale release versions before they can move `latest` backwards.
+- Update setup-node to v7.0.0 in CI and publishing while retaining the Node.js 24 runtime.
 - Preserve leading and trailing whitespace in CLI paths, including forced output replacement.
 - Report invalid CLI arguments as concise errors with exit code 1 and no leaked signal listeners.
+- Refresh Biome, ESLint, typescript-eslint, and slophammer development validation tools.
 
 ## 0.1.2 — 2026-09-21
 

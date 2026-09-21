@@ -185,7 +185,10 @@ const metricsSchema = z
 const stepSchema = z
   .object({
     step_id: z.number().int().positive(),
-    timestamp: z.iso.datetime({ offset: true }).optional(),
+    // Preserve minute precision accepted by the public validator before Zod 4.6.
+    timestamp: z
+      .union([z.iso.datetime({ offset: true }), z.iso.datetime({ offset: true, precision: -1 })])
+      .optional(),
     source: z.enum(["system", "user", "agent"]),
     model_name: z.string().optional(),
     reasoning_effort: z.union([z.string(), z.number()]).optional(),
