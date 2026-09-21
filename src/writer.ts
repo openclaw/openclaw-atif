@@ -404,18 +404,29 @@ async function adoptLegacyDirectoryTransaction(destination: string): Promise<voi
   }
   if (candidates.length === 0) return;
   const canonical = transactionPath(destination);
-  if (candidates.length !== 1 || (await exists(canonical)))
-    throw new OutputConflictError(canonical);
+  if (candidates.length !== 1) throw new OutputConflictError(canonical);
   const candidate = candidates[0];
   if (!candidate) return;
   // v0.1.1 stored trailing-slash journals inside the destination (then backup).
-  // Adopt without replacement before recovery; ambiguous carriers are never cleaned.
-  try {
-    await link(candidate.path, canonical);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST")
+  // A crash after linking can leave both names. Only that same-inode pair may
+  // resume adoption; independent journals remain ambiguous even with equal bytes.
+  if (await exists(canonical)) {
+    const [legacy, current] = await Promise.all([lstat(candidate.path), lstat(canonical)]);
+    if (
+      !legacy.isFile() ||
+      !current.isFile() ||
+      legacy.dev !== current.dev ||
+      legacy.ino !== current.ino
+    )
       throw new OutputConflictError(canonical);
-    throw error;
+  } else {
+    try {
+      await link(candidate.path, canonical);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST")
+        throw new OutputConflictError(canonical);
+      throw error;
+    }
   }
   await syncDirectory(parent);
   const adopted = await readDirectoryTransaction(canonical, destination);

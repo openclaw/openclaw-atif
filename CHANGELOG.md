@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Resume interrupted legacy journal adoption when both marker names identify the same verified file.
 - Preserve implicit empty legacy agent rosters for OpenClaw's main-agent migration.
 - Recover verified v0.1.1 transactions created with trailing-slash destinations without touching ambiguous backups.
 - Confine legacy migration and subsequent capture to a private config and environment,

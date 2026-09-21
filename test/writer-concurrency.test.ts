@@ -22,7 +22,7 @@ if (pause) {
   const open = fs.promises.open;
   fs.promises.open = async (...args) => {
     const handle = await open(...args);
-    if (String(args[0]).endsWith(".openclaw-atif.lock")) {
+    if (args[1] === "wx" && String(args[0]).endsWith(".openclaw-atif.lock")) {
       process.send("locked");
       await new Promise((resolve) => process.once("message", resolve));
     }
