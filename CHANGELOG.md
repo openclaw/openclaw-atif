@@ -11,6 +11,7 @@
 - Serialize file and directory writers through a canonical destination lock, preserve recovery
   state during contention, and prevent no-force file commits from replacing concurrent output.
 - Preserve own `__proto__` JSON keys through bundle loading, tool arguments, validation, and serialization.
+- Update TypeScript to 6.0.3, retaining the compiler API used by lint and mutation checks.
 - Align agent-only reasoning effort and zero-call dispatch validation with the pinned Harbor schema.
 - Update Zod to 4.6.5 while preserving minute-precision timestamps in the public ATIF validator.
 - Preserve media references with mixed-case HTTP, HTTPS, and data URI schemes.
