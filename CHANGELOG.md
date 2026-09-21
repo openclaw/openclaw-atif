@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.2 — 2026-09-21
+
+- Prepare the first functional `@openclaw/openclaw-atif` release from the OpenClaw
+  organization while retaining the `openclaw-atif` CLI command.
+- Add CodeQL analysis and publish the exact smoke-tested npm tarball with provenance
+  and registry integrity verification.
 - Stop the owned OpenClaw process group on POSIX cancellation, timeout, or output
   overflow, and wait for inherited pipes to close before removing private staging.
 - Omit unobserved LLM call counts instead of treating every assistant transcript

@@ -1,6 +1,6 @@
 {
   "name": "@openclaw/openclaw-atif",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Export OpenClaw session families as Harbor ATIF trajectories",
   "type": "module",
   "license": "MIT",
@@ -34,10 +34,12 @@
   "files": [
     "dist",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",

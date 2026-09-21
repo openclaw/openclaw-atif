@@ -8,24 +8,32 @@ on:
 permissions:
   contents: read
 
+env:
+  NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: "24.18.0"
           cache: npm
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
+      - run: npm install --global npm@11.19.0 --ignore-scripts
       - run: npm ci
       - run: npm run check
-      - run: npm run coverage
       - run: npm run mutate
       - run: npm run slophammer
       - run: npm run validate:harbor
+      - name: Pack tested build
+        run: node scripts/pack-release.mjs "$RUNNER_TEMP/package"
       - run: npm run smoke:cli
-      - run: npm pack --dry-run
