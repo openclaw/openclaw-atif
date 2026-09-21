@@ -5,6 +5,14 @@ import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { runCommand } from "../src/openclaw/process.js";
 
+function stopFixtureProcess(pid: number): void {
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+  }
+}
+
 describe.skipIf(process.platform === "win32")("OpenClaw POSIX process ownership", () => {
   it.each(["abort", "timeout", "overflow", "exited-wrapper"] as const)(
     "stops inherited-pipe descendants before settling on %s",
@@ -47,7 +55,14 @@ if (mode === "exited-wrapper") { child.unref(); process.exit(0); }
       }).catch((error: unknown) => error);
       try {
         await expect
-          .poll(() => access(ready).then(() => true, () => false), { timeout: 5_000 })
+          .poll(
+            () =>
+              access(ready).then(
+                () => true,
+                () => false,
+              ),
+            { timeout: 5_000 },
+          )
           .toBe(true);
         if (reason === "abort") controller.abort();
         if (reason === "overflow") await writeFile(trigger, "overflow");
@@ -66,11 +81,7 @@ if (mode === "exited-wrapper") { child.unref(); process.exit(0); }
         for (const name of ["worker.pid", "wrapper.pid"]) {
           const pid = await readFile(join(root, name), "utf8").catch(() => "");
           if (!pid) continue;
-          try {
-            process.kill(Number(pid), "SIGKILL");
-          } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
-          }
+          stopFixtureProcess(Number(pid));
         }
         await result;
         await rm(root, { recursive: true, force: true });
