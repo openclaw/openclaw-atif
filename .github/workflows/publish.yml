@@ -61,6 +61,10 @@ jobs:
       - name: Pack tested build
         run: node scripts/pack-release.mjs "$RUNNER_TEMP/package"
       - run: npm run smoke:cli
+      - name: Install pinned migration dependency
+        run: npm install --prefix "$RUNNER_TEMP/migration-openclaw" --ignore-scripts --omit=dev openclaw@2026.9.5
+      - name: Verify real migration preserves original state
+        run: node scripts/smoke-migration.mjs "$RUNNER_TEMP/migration-openclaw"
       - name: Check registry artifact
         id: registry
         run: |
