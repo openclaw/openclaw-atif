@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Recover verified v0.1.1 transactions created with trailing-slash destinations without touching ambiguous backups.
 - Confine legacy migration and subsequent capture to a private config and environment,
   parse JSON5 selectors, validate public migration reports, and require targeted migration support.
 - Serialize file and directory writers through a canonical destination lock, preserve recovery

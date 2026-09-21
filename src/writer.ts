@@ -42,6 +42,8 @@ interface DirectoryTransaction {
   files: Record<string, string>;
 }
 
+const TRANSACTION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) throw new DOMException("Export was interrupted", "AbortError");
 }
@@ -307,7 +309,7 @@ function isDirectoryTransaction(
   if (
     record.schema !== "openclaw-atif-directory-transaction-v1" ||
     typeof record.id !== "string" ||
-    !/^[0-9a-f-]{36}$/.test(record.id) ||
+    !TRANSACTION_ID.test(record.id) ||
     record.destination !== destination ||
     typeof record.backup !== "string" ||
     typeof record.stage !== "string" ||
@@ -336,8 +338,28 @@ async function loadDirectoryTransaction(
 ): Promise<DirectoryTransaction | undefined> {
   const path = transactionPath(destination);
   if (!(await exists(path))) return undefined;
+  return readDirectoryTransaction(path, destination);
+}
+
+async function readDirectoryTransaction(
+  path: string,
+  destination: string,
+  container?: string,
+): Promise<DirectoryTransaction> {
   try {
-    const parsed: unknown = JSON.parse(await readFile(path, "utf8"));
+    const content = await readStableFile(async () => {
+      if (container) {
+        const details = await lstat(container);
+        if (
+          !details.isDirectory() ||
+          details.isSymbolicLink() ||
+          (await realpath(container)) !== container
+        )
+          throw new OutputConflictError(container);
+      }
+      return path;
+    }, 64 * 1024);
+    const parsed: unknown = JSON.parse(content.toString("utf8"));
     if (isDirectoryTransaction(parsed, destination)) return parsed;
     const record = asRecord(parsed);
     if (record) {
@@ -357,7 +379,52 @@ async function loadDirectoryTransaction(
   throw new OutputConflictError(path);
 }
 
+async function adoptLegacyDirectoryTransaction(destination: string): Promise<void> {
+  const parent = dirname(destination);
+  const prefix = `.${basename(destination)}.openclaw-atif-`;
+  const containers: { path: string; backup: boolean }[] = [];
+  if (await exists(destination)) containers.push({ path: destination, backup: false });
+  for (const name of await readdir(parent)) {
+    if (!name.startsWith(prefix) || !name.endsWith(".backup")) continue;
+    if (TRANSACTION_ID.test(name.slice(prefix.length, -".backup".length)))
+      containers.push({ path: join(parent, name), backup: true });
+  }
+  const candidates: { path: string; container: string; transaction: DirectoryTransaction }[] = [];
+  for (const container of containers) {
+    const details = await lstat(container.path);
+    if (!details.isDirectory() || details.isSymbolicLink()) continue;
+    const path = join(container.path, ".openclaw-atif-transaction.json");
+    if (!(await exists(path))) continue;
+    const transaction = await readDirectoryTransaction(path, destination, container.path);
+    if (container.backup && transaction.backup !== container.path)
+      throw new OutputConflictError(path);
+    candidates.push({ path, container: container.path, transaction });
+  }
+  if (candidates.length === 0) return;
+  const canonical = transactionPath(destination);
+  if (candidates.length !== 1 || (await exists(canonical)))
+    throw new OutputConflictError(canonical);
+  const candidate = candidates[0];
+  if (!candidate) return;
+  // v0.1.1 stored trailing-slash journals inside the destination (then backup).
+  // Adopt without replacement before recovery; ambiguous carriers are never cleaned.
+  try {
+    await link(candidate.path, canonical);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST")
+      throw new OutputConflictError(canonical);
+    throw error;
+  }
+  await syncDirectory(parent);
+  const adopted = await readDirectoryTransaction(canonical, destination);
+  if (JSON.stringify(adopted) !== JSON.stringify(candidate.transaction))
+    throw new OutputConflictError(canonical);
+  await rm(candidate.path);
+  await syncDirectory(candidate.container);
+}
+
 async function recoverDirectory(destination: string): Promise<void> {
+  await adoptLegacyDirectoryTransaction(destination);
   const transaction = await loadDirectoryTransaction(destination);
   if (!transaction) return;
   const destinationExists = await exists(destination);
