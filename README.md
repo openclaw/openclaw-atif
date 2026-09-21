@@ -19,6 +19,11 @@ npm install @openclaw/openclaw-atif
 
 Node.js 24.11 or newer in the Node.js 24 release line is required.
 
+Live OpenClaw capture uses POSIX executables and owner-only filesystem permissions
+on Linux, macOS, or WSL. Native Windows capture is not yet qualified: it needs
+launcher resolution, process-tree cancellation, and permission verification.
+This does not restrict the library's in-memory trajectory mapping APIs.
+
 ## Export a session family
 
 Select the root by its exact OpenClaw session key:
