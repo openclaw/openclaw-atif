@@ -29,7 +29,7 @@ def check_media(trajectory, root):
                 if part["type"] == "text":
                     continue
                 location = part["source"]["path"]
-                if location.startswith(("https://", "http://", "data:")):
+                if location.lower().startswith(("https://", "http://", "data:")):
                     continue
                 match = re.fullmatch(r"media/([0-9a-f]{64})\.[a-z0-9]+", location)
                 if not match:

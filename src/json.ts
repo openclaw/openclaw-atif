@@ -5,6 +5,29 @@ export interface JsonObject {
   [key: string]: JsonValue;
 }
 
+export function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== "object") return false;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function isJsonValue(value: unknown): value is JsonValue {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (Array.isArray(value)) return Array.from(value).every(isJsonValue);
+  return isJsonObject(value);
+}
+
+export function isJsonObject(value: unknown): value is JsonObject {
+  return (
+    isPlainRecord(value) &&
+    !Object.getOwnPropertySymbols(value).some((key) =>
+      Object.prototype.propertyIsEnumerable.call(value, key),
+    ) &&
+    Object.values(value).every(isJsonValue)
+  );
+}
+
 export function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -33,12 +56,12 @@ export function toJsonValue(value: unknown): JsonValue | undefined {
   }
   const record = asRecord(value);
   if (!record) return undefined;
-  const output: JsonObject = {};
+  const entries: [string, JsonValue][] = [];
   for (const [key, child] of Object.entries(record)) {
     const converted = toJsonValue(child);
-    if (converted !== undefined) output[key] = converted;
+    if (converted !== undefined) entries.push([key, converted]);
   }
-  return output;
+  return Object.fromEntries(entries);
 }
 
 export function toJsonObject(value: unknown): JsonObject | undefined {

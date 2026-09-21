@@ -1,7 +1,7 @@
 /* eslint-disable complexity -- Bundle validation enumerates all public contract checks. */
 import { createHash } from "node:crypto";
-import { lstat, readFile, realpath } from "node:fs/promises";
-import { basename, join, relative, resolve } from "node:path";
+import { lstat, realpath } from "node:fs/promises";
+import { basename, isAbsolute, join, relative, sep } from "node:path";
 import { asRecord } from "../json.js";
 import {
   bundleManifestSchema,
@@ -9,6 +9,7 @@ import {
   type TrajectoryEvent,
   trajectoryEventSchema,
 } from "../models/bundle-v1.js";
+import { readStableFile, StableFileError } from "../stable-file.js";
 
 const REQUIRED_FILES = ["manifest.json", "events.jsonl", "session-branch.json"] as const;
 const OPTIONAL_FILES = new Set([
@@ -26,16 +27,30 @@ async function readRegularFile(root: string, name: string, maxBytes: number): Pr
   if (basename(name) !== name || name.includes(".."))
     throw new Error(`Unsafe bundle file name: ${name}`);
   const path = join(root, name);
-  const details = await lstat(path);
-  if (!details.isFile() || details.isSymbolicLink())
-    throw new Error(`Bundle file must be a regular non-symlink: ${name}`);
-  if (details.size > maxBytes) throw new Error(`Bundle file exceeds size limit: ${name}`);
-  const realRoot = await realpath(root);
-  const realFile = await realpath(path);
-  const location = relative(realRoot, realFile);
-  if (location.startsWith("..") || resolve(realFile) === resolve(realRoot))
-    throw new Error(`Bundle file escaped its directory: ${name}`);
-  return readFile(realFile);
+  try {
+    return await readStableFile(async () => {
+      if ((await lstat(path)).isSymbolicLink()) throw new StableFileError("not-regular-file");
+      const realRoot = await realpath(root);
+      const realFile = await realpath(path);
+      const location = relative(realRoot, realFile);
+      if (
+        realRoot !== root ||
+        !location ||
+        location.split(sep).includes("..") ||
+        isAbsolute(location)
+      )
+        throw new Error(`Bundle file escaped its directory: ${name}`);
+      return path;
+    }, maxBytes);
+  } catch (error) {
+    if (!(error instanceof StableFileError)) throw error;
+    const reason = {
+      "not-regular-file": "must be a regular non-symlink",
+      "file-too-large": "exceeds remaining size limit",
+      "file-changed": "changed while reading",
+    }[error.code];
+    throw new Error(`Bundle file ${reason}: ${name}`, { cause: error });
+  }
 }
 
 function sha256(content: Buffer): string {
@@ -81,8 +96,13 @@ export async function loadOpenClawBundle(
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BUNDLE_BYTES;
   const maxEvents = options.maxEvents ?? DEFAULT_MAX_EVENTS;
   const contents = new Map<string, Buffer>();
-  for (const name of REQUIRED_FILES)
-    contents.set(name, await readRegularFile(root, name, maxBytes));
+  let remainingBytes = maxBytes;
+  async function addContent(name: string): Promise<void> {
+    const content = await readRegularFile(root, name, remainingBytes);
+    remainingBytes -= content.byteLength;
+    contents.set(name, content);
+  }
+  for (const name of REQUIRED_FILES) await addContent(name);
   const manifest = bundleManifestSchema.parse(
     parseJsonObject(requiredContent(contents, "manifest.json"), "manifest.json"),
   );
@@ -98,10 +118,8 @@ export async function loadOpenClawBundle(
   for (const name of declaredContents.keys()) if (OPTIONAL_FILES.has(name)) optionalNames.add(name);
   for (const name of optionalNames) {
     if (!OPTIONAL_FILES.has(name)) throw new Error(`Unsupported supplemental bundle file: ${name}`);
-    contents.set(name, await readRegularFile(root, name, maxBytes));
+    await addContent(name);
   }
-  const totalBytes = [...contents.values()].reduce((sum, content) => sum + content.byteLength, 0);
-  if (totalBytes > maxBytes) throw new Error("Bundle exceeds total size limit");
   for (const [name, bytes] of declaredContents) {
     const content = contents.get(name);
     if (content?.byteLength !== bytes)

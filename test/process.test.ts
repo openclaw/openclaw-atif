@@ -1,7 +1,7 @@
-import { chmod, mkdtemp, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { delimiter, join } from "node:path";
+import { describe, expect, it, vi } from "vitest";
 import { parseFinalJsonObject } from "../src/openclaw/json-output.js";
 import { resolveExecutable, runCommand, runOpenClaw } from "../src/openclaw/process.js";
 
@@ -65,5 +65,26 @@ describe("OpenClaw process boundary", () => {
     await expect(resolveExecutable("definitely-not-an-openclaw-atif-executable")).rejects.toThrow(
       "not found",
     );
+  });
+
+  it("skips directories and non-executable files before a valid PATH candidate", async () => {
+    const root = await mkdtemp(join(tmpdir(), "openclaw-atif-path-"));
+    const paths = ["directory", "non-executable", "valid"].map((name) => join(root, name));
+    try {
+      for (const path of paths) await mkdir(path);
+      await mkdir(join(paths[0] ?? root, "candidate"));
+      await writeFile(join(paths[1] ?? root, "candidate"), "not executable", { mode: 0o600 });
+      await symlink(process.execPath, join(paths[2] ?? root, "candidate"));
+      vi.stubEnv("PATH", paths.join(delimiter));
+      expect((await resolveExecutable("candidate")).path).toBe(
+        (await resolveExecutable(process.execPath)).path,
+      );
+      await expect(resolveExecutable(join(paths[0] ?? root, "candidate"))).rejects.toThrow(
+        "not a regular executable",
+      );
+    } finally {
+      vi.unstubAllEnvs();
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

@@ -1,9 +1,15 @@
+import * as fs from "node:fs/promises";
 import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadOpenClawBundle } from "../src/openclaw/bundle-v1.js";
 import { childEvents, writeBundle } from "./helpers.js";
+
+vi.mock("node:fs/promises", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:fs/promises")>()),
+}));
+afterEach(() => vi.restoreAllMocks());
 
 async function standardBundle(root: string, name = "bundle") {
   return writeBundle({
@@ -16,6 +22,92 @@ async function standardBundle(root: string, name = "bundle") {
 }
 
 describe("loadOpenClawBundle", () => {
+  it("rejects a file replaced between inspection and open", async () => {
+    const root = await mkdtemp(join(tmpdir(), "openclaw-atif-bundle-race-"));
+    try {
+      const directory = await standardBundle(root);
+      const external = join(root, "external.json");
+      await writeFile(external, "private");
+      const actualOpen = fs.open;
+      vi.spyOn(fs, "open").mockImplementationOnce(async (...args) => {
+        await rm(join(directory, "manifest.json"));
+        await symlink(external, join(directory, "manifest.json"));
+        return actualOpen(...args);
+      });
+      await expect(loadOpenClawBundle(directory)).rejects.toThrow();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects growth after open and closes the descriptor", async () => {
+    const root = await mkdtemp(join(tmpdir(), "openclaw-atif-bundle-growth-"));
+    try {
+      const directory = await standardBundle(root);
+      const actualOpen = fs.open;
+      let opened: fs.FileHandle | undefined;
+      vi.spyOn(fs, "open").mockImplementationOnce(async (...args) => {
+        opened = await actualOpen(...args);
+        await fs.appendFile(join(directory, "manifest.json"), "extra");
+        return opened;
+      });
+      await expect(loadOpenClawBundle(directory)).rejects.toThrow("changed while reading");
+      expect(opened?.fd).toBe(-1);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects aggregate overflow before opening the next file", async () => {
+    const root = await mkdtemp(join(tmpdir(), "openclaw-atif-bundle-limit-"));
+    try {
+      const directory = await standardBundle(root);
+      const maxBytes = (await fs.stat(join(directory, "manifest.json"))).size;
+      const open = vi.spyOn(fs, "open");
+      await expect(loadOpenClawBundle(directory, { maxBytes })).rejects.toThrow("size limit");
+      expect(open).toHaveBeenCalledTimes(1);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each(["fifo", "growth", "same-size"])(
+    "rejects %s replacement or mutation without leaking its descriptor",
+    async (mutation) => {
+      const root = await mkdtemp(join(tmpdir(), "openclaw-atif-bundle-read-race-"));
+      try {
+        const directory = await standardBundle(root);
+        const path = join(directory, "manifest.json");
+        const actualOpen = fs.open;
+        let opened: fs.FileHandle | undefined;
+        vi.spyOn(fs, "open").mockImplementationOnce(async (...args) => {
+          if (mutation === "fifo") {
+            await rm(path);
+            execFileSync("mkfifo", [path]);
+          }
+          const handle = await actualOpen(...args);
+          opened = handle;
+          if (mutation !== "fifo") {
+            const read = handle.read.bind(handle);
+            vi.spyOn(handle, "read").mockImplementationOnce(async (...readArgs) => {
+              if (mutation === "growth") await fs.appendFile(path, "extra");
+              else {
+                const original = await readFile(path);
+                await writeFile(path, Buffer.alloc(original.length, 32));
+              }
+              return read(...readArgs);
+            });
+          }
+          return handle;
+        });
+        await expect(loadOpenClawBundle(directory)).rejects.toThrow("changed while reading");
+        expect(opened?.fd).toBe(-1);
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+  );
+
   it("loads and validates a public bundle", async () => {
     const root = await mkdtemp(join(tmpdir(), "openclaw-atif-bundle-"));
     const bundle = await loadOpenClawBundle(await standardBundle(root));
@@ -154,3 +246,5 @@ describe("loadOpenClawBundle", () => {
     expect(bundle.sourceHashes["tools.json"]).toMatch(/^[a-f0-9]{64}$/u);
   });
 });
+
+import { execFileSync } from "node:child_process";

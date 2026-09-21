@@ -25,6 +25,7 @@ async function findExecutable(value: string): Promise<string> {
     const candidate = join(directory, value);
     try {
       await access(candidate, constants.X_OK);
+      if (!(await stat(candidate)).isFile()) continue;
       return candidate;
     } catch {
       // Continue through PATH.

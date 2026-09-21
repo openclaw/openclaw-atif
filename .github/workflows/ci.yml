@@ -16,6 +16,21 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  migration-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "24.18.0"
+          cache: npm
+      - run: npm install --global npm@11.19.0 --ignore-scripts
+      - run: npm ci
+      - name: Install pinned migration dependency
+        run: npm install --prefix "$RUNNER_TEMP/migration-openclaw" --ignore-scripts --omit=dev openclaw@2026.9.5
+      - name: Verify real migration preserves original state
+        run: node scripts/smoke-migration.mjs "$RUNNER_TEMP/migration-openclaw"
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 25

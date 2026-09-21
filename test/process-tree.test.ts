@@ -13,37 +13,49 @@ function stopFixtureProcess(pid: number): void {
   }
 }
 
+async function triggerFixtureStop(
+  trigger: "abort" | "overflow" | "none",
+  controller: AbortController,
+  marker: string,
+): Promise<void> {
+  if (trigger === "abort") {
+    controller.abort();
+    return;
+  }
+  if (trigger === "overflow") await writeFile(marker, "overflow");
+}
+
 const stopCases = [
   {
     reason: "abort",
     timeoutMs: 5_000,
     expectedMessage: "interrupted",
-    trigger: (controller: AbortController, _marker: string) => controller.abort(),
+    trigger: "abort",
   },
   {
     reason: "timeout",
     timeoutMs: 1_000,
     expectedMessage: "timed out",
-    trigger: (_controller: AbortController, _marker: string) => undefined,
+    trigger: "none",
   },
   {
     reason: "overflow",
     timeoutMs: 5_000,
     expectedMessage: "exceeded",
-    trigger: (_controller: AbortController, marker: string) => writeFile(marker, "overflow"),
+    trigger: "overflow",
   },
   {
     reason: "exited-wrapper",
     timeoutMs: 1_000,
     expectedMessage: "timed out",
-    trigger: (_controller: AbortController, _marker: string) => undefined,
+    trigger: "none",
   },
 ] as const;
 
 describe.skipIf(process.platform === "win32")("OpenClaw POSIX process ownership", () => {
   it.each(stopCases)(
     "stops inherited-pipe descendants before settling on $reason",
-    async ({ reason, timeoutMs, expectedMessage, trigger: triggerStop }) => {
+    async ({ reason, timeoutMs, expectedMessage, trigger: stopTrigger }) => {
       const root = await mkdtemp(join(tmpdir(), "openclaw-atif-tree-"));
       const worker = join(root, "worker.mjs");
       const wrapper = join(root, "wrapper.mjs");
@@ -91,7 +103,7 @@ if (mode === "exited-wrapper") { child.unref(); process.exit(0); }
             { timeout: 5_000 },
           )
           .toBe(true);
-        await triggerStop(controller, trigger);
+        await triggerFixtureStop(stopTrigger, controller, trigger);
         const error = await result;
         expect(error).toBeInstanceOf(Error);
         expect((error as Error).message).toContain(expectedMessage);
