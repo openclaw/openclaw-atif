@@ -26,6 +26,7 @@
 - Update setup-node to v7.0.0 in CI and publishing while retaining the Node.js 24 runtime.
 - Preserve leading and trailing whitespace in CLI paths, including forced output replacement.
 - Report invalid CLI arguments as concise errors with exit code 1 and no leaked signal listeners.
+- Refresh Biome, ESLint, typescript-eslint, and slophammer development validation tools.
 
 ## 0.1.2 — 2026-09-21
 
