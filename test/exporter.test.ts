@@ -1,7 +1,7 @@
 import { mkdtemp, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   combineExportErrors,
   convertOpenClawBundles,
@@ -58,21 +58,23 @@ describe("convertOpenClawBundles", () => {
     expect((error as AggregateError).errors).toHaveLength(2);
   });
   it("cleans failed staging even when source retention was requested", async () => {
-    const before = new Set(
-      (await readdir(tmpdir())).filter((name) => name.startsWith(".openclaw-atif-")),
-    );
-    await expect(
-      exportOpenClawFamily({
-        executable: join(tmpdir(), "missing-openclaw-executable"),
-        sessionKey: "agent:main:main",
-        output: join(tmpdir(), "unused-openclaw-atif-output"),
-        keepSourceBundles: true,
-      }),
-    ).rejects.toThrow();
-    const added = (await readdir(tmpdir())).filter(
-      (name) => name.startsWith(".openclaw-atif-") && !before.has(name),
-    );
-    expect(added).toEqual([]);
+    const root = await mkdtemp(join(tmpdir(), "openclaw-atif-cleanup-"));
+    vi.stubEnv("TMPDIR", root);
+    vi.stubEnv("TEMP", root);
+    vi.stubEnv("TMP", root);
+    try {
+      await expect(
+        exportOpenClawFamily({
+          executable: join(root, "missing-openclaw-executable"),
+          sessionKey: "agent:main:main",
+          output: join(root, "unused-output"),
+          keepSourceBundles: true,
+        }),
+      ).rejects.toThrow();
+      expect(await readdir(root)).toEqual([]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("writes a complete owner-only atomic export", async () => {

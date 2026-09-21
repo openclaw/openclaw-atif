@@ -1,3 +1,4 @@
+import type { AccountingEvidence } from "../accounting.js";
 import type { Diagnostic } from "../diagnostics.js";
 
 export interface MetricTotals {
@@ -41,6 +42,7 @@ export interface ExportReceipt {
     referenceStatus: "resolved" | "unresolved" | "not-applicable";
   }[];
   familyMetrics: MetricTotals;
+  accounting?: AccountingEvidence;
   diagnostics: Diagnostic[];
   legacyMigration?: {
     sourceFingerprintBefore: string;

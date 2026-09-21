@@ -14,6 +14,7 @@ import { loadOpenClawBundle } from "../openclaw/bundle-v1.js";
 import { stableCompactStringify } from "../stable-json.js";
 import { DEFAULT_PROFILE } from "../version.js";
 import { extractSpawnEvidence, spawnMatchesBundle } from "./relationships.js";
+import { restoreCaptureEvidence } from "./replay.js";
 
 const RELATIONSHIP_KINDS = new Set<RelationshipKind>([
   "native-subagent",
@@ -77,7 +78,8 @@ export async function loadCapturedFamilyFromGraph(
   graphPath: string,
   bundleRoot: string,
 ): Promise<CapturedFamily> {
-  const graph = parseBundleGraph(JSON.parse(await readFile(graphPath, "utf8")) as unknown);
+  const value = JSON.parse(await readFile(graphPath, "utf8")) as unknown;
+  const graph = parseBundleGraph(value);
   if (graph.nodes.length === 0 || graph.nodes.length > 128)
     throw new Error("Bundle graph has an invalid node count");
   const nodes = new Map<string, SourceNode>();
@@ -150,15 +152,18 @@ export async function loadCapturedFamilyFromGraph(
   if (reachable.size !== nodes.size)
     throw new Error("Bundle graph contains nodes that are not reachable from the root");
   const hash = createHash("sha256").update(stableCompactStringify(graph)).digest("hex");
-  return {
-    rootKey: graph.rootKey,
-    openclawVersion: graph.openclawVersion,
-    profile: graph.profile ?? DEFAULT_PROFILE,
-    nodes,
-    relationships,
-    diagnostics: [],
-    listingBeforeHash: hash,
-    listingAfterHash: hash,
-    stable: true,
-  };
+  return restoreCaptureEvidence(
+    {
+      rootKey: graph.rootKey,
+      openclawVersion: graph.openclawVersion,
+      profile: graph.profile ?? DEFAULT_PROFILE,
+      nodes,
+      relationships,
+      diagnostics: [],
+      listingBeforeHash: hash,
+      listingAfterHash: hash,
+      stable: true,
+    },
+    asRecord(value)?.capture,
+  );
 }

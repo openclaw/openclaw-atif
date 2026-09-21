@@ -1,4 +1,90 @@
 {
+  "accounting": {
+    "costProvenance": "runtime-reported-unreconciled",
+    "family": {
+      "components": {
+        "cacheRead": {
+          "observed": 2,
+          "total": 3
+        },
+        "cacheWrite": {
+          "observed": 0,
+          "total": null
+        },
+        "costUsd": {
+          "observed": 2,
+          "total": 0.003
+        },
+        "input": {
+          "observed": 2,
+          "total": 12
+        },
+        "output": {
+          "observed": 2,
+          "total": 7
+        }
+      },
+      "messages": 2
+    },
+    "nodes": [
+      {
+        "components": {
+          "cacheRead": {
+            "observed": 2,
+            "total": 3
+          },
+          "cacheWrite": {
+            "observed": 0,
+            "total": null
+          },
+          "costUsd": {
+            "observed": 2,
+            "total": 0.003
+          },
+          "input": {
+            "observed": 2,
+            "total": 12
+          },
+          "output": {
+            "observed": 2,
+            "total": 7
+          }
+        },
+        "messages": 2,
+        "models": [
+          {
+            "components": {
+              "cacheRead": {
+                "observed": 2,
+                "total": 3
+              },
+              "cacheWrite": {
+                "observed": 0,
+                "total": null
+              },
+              "costUsd": {
+                "observed": 2,
+                "total": 0.003
+              },
+              "input": {
+                "observed": 2,
+                "total": 12
+              },
+              "output": {
+                "observed": 2,
+                "total": 7
+              }
+            },
+            "messages": 2,
+            "model": "openai/gpt-5.6-luna"
+          }
+        ],
+        "sessionKey": "agent:main:main"
+      }
+    ],
+    "providerRequests": "not-established",
+    "scope": "observed-assistant-messages"
+  },
   "diagnostics": [],
   "familyMetrics": {
     "cachedTokens": 3,

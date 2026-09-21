@@ -6,6 +6,7 @@ import { mapFamilyToAtif } from "./atif/mapper.js";
 import { type AtifTrajectory, validateAtifTrajectory } from "./atif/schema.js";
 import { captureOpenClawFamily } from "./capture/family.js";
 import { loadCapturedFamilyFromGraph } from "./capture/graph.js";
+import { writeReplayGraph } from "./capture/replay.js";
 import { type LegacyMigrationReceipt, prepareLegacyMigrationCopy } from "./legacy/migrate-copy.js";
 import type { ExportReceipt } from "./models/receipt.js";
 import { normalizeFamily } from "./normalize/family.js";
@@ -147,8 +148,10 @@ export async function exportOpenClawFamily(options: ExportOptions): Promise<Expo
       trajectory: mapped.trajectory,
       diagnostics: mapped.diagnostics,
       nodeMetrics: mapped.nodeMetrics,
+      nodeUsage: mapped.nodeUsage,
       legacyMigration,
     });
+    if (options.keepSourceBundles) await writeReplayGraph(captured, stagingRoot);
     result = await commitExport({
       output: options.output,
       force: options.force,
@@ -198,6 +201,7 @@ export async function convertOpenClawBundles(options: {
     trajectory: mapped.trajectory,
     diagnostics: mapped.diagnostics,
     nodeMetrics: mapped.nodeMetrics,
+    nodeUsage: mapped.nodeUsage,
   });
   return commitExport({
     output: options.output,

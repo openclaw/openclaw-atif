@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add receipt accounting coverage by node, model, and observed assistant message,
+  preserving missing values versus zero independently of capture completeness.
+- Retain a relocatable, checksum-verified conversion graph with public source
+  bundles, including capture diagnostics and stability for offline replay.
+
 ## 0.1.2 — 2026-09-21
 
 - Prepare the first functional `@openclaw/openclaw-atif` release from the OpenClaw

@@ -1,5 +1,6 @@
 /* eslint-disable complexity -- Metric scope aggregation checks each optional field. */
 import { createHash } from "node:crypto";
+import { accountingEvidence, type NodeUsageSummary } from "./accounting.js";
 import type { AtifFinalMetrics, AtifTrajectory } from "./atif/schema.js";
 import { type Diagnostic, deduplicateDiagnostics } from "./diagnostics.js";
 import type { LegacyMigrationReceipt } from "./legacy/migrate-copy.js";
@@ -28,6 +29,7 @@ export function buildReceipt(params: {
   trajectory: AtifTrajectory;
   diagnostics: readonly Diagnostic[];
   nodeMetrics: ReadonlyMap<string, AtifFinalMetrics>;
+  nodeUsage?: ReadonlyMap<string, NodeUsageSummary>;
   legacyMigration?: LegacyMigrationReceipt;
 }): ExportReceipt {
   const root = params.family.nodes.get(params.family.rootKey);
@@ -90,6 +92,7 @@ export function buildReceipt(params: {
         : "not-applicable",
     })),
     familyMetrics,
+    ...(params.nodeUsage ? { accounting: accountingEvidence(params.nodeUsage) } : {}),
     diagnostics,
     ...(params.legacyMigration ? { legacyMigration: params.legacyMigration } : {}),
     validation: {

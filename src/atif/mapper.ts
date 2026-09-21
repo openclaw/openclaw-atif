@@ -1,4 +1,6 @@
 /* eslint-disable complexity -- Source-format dispatch is intentionally explicit. */
+
+import { type NodeUsageSummary, summarizeUsage, type UsageObservation } from "../accounting.js";
 import { isAcpListingRow } from "../capture/relationships.js";
 import type { Diagnostic } from "../diagnostics.js";
 import {
@@ -36,6 +38,7 @@ export interface MappingResult {
   trajectory: AtifTrajectory;
   diagnostics: Diagnostic[];
   nodeMetrics: ReadonlyMap<string, AtifFinalMetrics>;
+  nodeUsage: ReadonlyMap<string, NodeUsageSummary>;
   mediaFiles: ReadonlyMap<string, Buffer>;
 }
 
@@ -46,6 +49,7 @@ type StepState = {
   media: MediaStore;
   modelName?: string;
   reasoningEffort?: string;
+  usage: UsageObservation[];
 };
 
 async function contentParts(
@@ -252,6 +256,7 @@ async function messageStep(
   if (event.type !== "assistant.message") return;
   const toolCalls = event.entryId ? calls.get(event.entryId) : undefined;
   const stepModel = modelName(message) ?? state.modelName;
+  state.usage.push({ model: stepModel ?? null, usage: asRecord(message.usage) ?? {} });
   const reasoningEffort =
     readNonBlankString(message.thinkingLevel) ??
     readNonBlankString(message.reasoningEffort) ??
@@ -500,6 +505,7 @@ async function buildNode(params: {
   visiting: Set<string>;
   diagnostics: Diagnostic[];
   nodeMetrics: Map<string, AtifFinalMetrics>;
+  nodeUsage: Map<string, NodeUsageSummary>;
   media: MediaStore;
 }): Promise<AtifTrajectory> {
   if (params.visiting.has(params.node.key))
@@ -542,6 +548,7 @@ async function buildNode(params: {
     ownerByCallId: new Map(),
     diagnostics: [],
     media: params.media,
+    usage: [],
   };
   const calls = callsByAssistantEntry(params.node.transcriptEvents, params.node, state);
   const events = [
@@ -592,6 +599,7 @@ async function buildNode(params: {
   params.visiting.delete(params.node.key);
   const metrics = finalMetrics(state.steps);
   params.nodeMetrics.set(params.node.key, metrics);
+  params.nodeUsage.set(params.node.key, summarizeUsage(state.usage));
   const otherRelationships = params.node.childRelationships.filter(
     (relationship) => !["native-subagent", "acp-child"].includes(relationship.kind),
   );
@@ -632,6 +640,7 @@ export async function mapFamilyToAtif(family: SessionFamilySnapshot): Promise<Ma
   if (!root) throw new Error("Session family root is missing");
   const diagnostics: Diagnostic[] = [...family.diagnostics];
   const nodeMetrics = new Map<string, AtifFinalMetrics>();
+  const nodeUsage = new Map<string, NodeUsageSummary>();
   const media = new MediaStore();
   const trajectory = await buildNode({
     family,
@@ -639,6 +648,7 @@ export async function mapFamilyToAtif(family: SessionFamilySnapshot): Promise<Ma
     visiting: new Set(),
     diagnostics,
     nodeMetrics,
+    nodeUsage,
     media,
   });
   for (const node of [...family.nodes.values()].sort((a, b) => compareCodeUnits(a.key, b.key))) {
@@ -649,9 +659,10 @@ export async function mapFamilyToAtif(family: SessionFamilySnapshot): Promise<Ma
       visiting: new Set(),
       diagnostics,
       nodeMetrics,
+      nodeUsage,
       media: new MediaStore(),
     });
   }
   validateAtifTrajectory(trajectory);
-  return { trajectory, diagnostics, nodeMetrics, mediaFiles: media.files };
+  return { trajectory, diagnostics, nodeMetrics, nodeUsage, mediaFiles: media.files };
 }

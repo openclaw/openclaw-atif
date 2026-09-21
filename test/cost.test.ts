@@ -51,6 +51,38 @@ async function costs(root: Record<string, unknown>[], child: Record<string, unkn
 }
 
 describe("cost completeness", () => {
+  it("separates complete capture from missing accounting observations", async () => {
+    const { receipt } = await costs([{ input: 0, output: 0, cost: 0 }, {}], [{ cacheWrite: 5 }]);
+    const accounting = receipt.accounting;
+    if (!accounting) throw new Error("Missing accounting coverage");
+    expect(receipt.status).toBe("complete");
+    expect(accounting.scope).toBe("observed-assistant-messages");
+    expect(accounting.family.messages).toBe(3);
+    expect(accounting.family.components.input).toEqual({ observed: 1, total: 0 });
+    expect(accounting.family.components.cacheWrite).toEqual({ observed: 1, total: 5 });
+    expect(accounting.family.components.cacheRead).toEqual({ observed: 0, total: null });
+    expect(accounting.family.components.costUsd).toEqual({ observed: 1, total: 0 });
+    expect(accounting.nodes.map((item) => item.sessionKey)).toEqual(["child", "root"]);
+    expect(accounting.providerRequests).toBe("not-established");
+  });
+
+  it("counts unobserved usage without inventing a model or zero totals", async () => {
+    const { receipt } = await costs([{}]);
+    const root = receipt.accounting?.nodes.find((item) => item.sessionKey === "root");
+    expect(root?.models).toEqual([
+      {
+        model: null,
+        messages: 1,
+        components: {
+          input: { observed: 0, total: null },
+          output: { observed: 0, total: null },
+          cacheRead: { observed: 0, total: null },
+          cacheWrite: { observed: 0, total: null },
+          costUsd: { observed: 0, total: null },
+        },
+      },
+    ]);
+  });
   it.each([
     { input: 5 },
     { output: 5 },

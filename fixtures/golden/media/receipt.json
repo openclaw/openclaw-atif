@@ -1,4 +1,90 @@
 {
+  "accounting": {
+    "costProvenance": "runtime-reported-unreconciled",
+    "family": {
+      "components": {
+        "cacheRead": {
+          "observed": 0,
+          "total": null
+        },
+        "cacheWrite": {
+          "observed": 1,
+          "total": 3
+        },
+        "costUsd": {
+          "observed": 0,
+          "total": null
+        },
+        "input": {
+          "observed": 1,
+          "total": 2
+        },
+        "output": {
+          "observed": 1,
+          "total": 1
+        }
+      },
+      "messages": 1
+    },
+    "nodes": [
+      {
+        "components": {
+          "cacheRead": {
+            "observed": 0,
+            "total": null
+          },
+          "cacheWrite": {
+            "observed": 1,
+            "total": 3
+          },
+          "costUsd": {
+            "observed": 0,
+            "total": null
+          },
+          "input": {
+            "observed": 1,
+            "total": 2
+          },
+          "output": {
+            "observed": 1,
+            "total": 1
+          }
+        },
+        "messages": 1,
+        "models": [
+          {
+            "components": {
+              "cacheRead": {
+                "observed": 0,
+                "total": null
+              },
+              "cacheWrite": {
+                "observed": 1,
+                "total": 3
+              },
+              "costUsd": {
+                "observed": 0,
+                "total": null
+              },
+              "input": {
+                "observed": 1,
+                "total": 2
+              },
+              "output": {
+                "observed": 1,
+                "total": 1
+              }
+            },
+            "messages": 1,
+            "model": null
+          }
+        ],
+        "sessionKey": "agent:main:main"
+      }
+    ],
+    "providerRequests": "not-established",
+    "scope": "observed-assistant-messages"
+  },
   "diagnostics": [],
   "familyMetrics": {
     "completionTokens": 1,
