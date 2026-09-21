@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Stop Harbor validation when fixture discovery fails, including after partial results.
 - Encode real-OpenClaw smoke fixture paths safely as JSON.
 - Serialize npm publication and reject stale release versions before they can move `latest` backwards.
 - Preserve leading and trailing whitespace in CLI paths, including forced output replacement.

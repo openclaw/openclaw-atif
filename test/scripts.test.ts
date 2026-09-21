@@ -5,6 +5,26 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("validation scripts", () => {
+  it("rejects partial Harbor fixture discovery before preparing the validator", async () => {
+    const root = await mkdtemp(join(tmpdir(), "openclaw-atif-script-find-"));
+    try {
+      await writeFile(
+        join(root, "find"),
+        '#!/bin/sh\nprintf "%s\\n" fixtures/golden/legacy-jsonl/trajectory.json\nexit 9\n',
+        { mode: 0o700 },
+      );
+      await writeFile(join(root, "git"), "#!/bin/sh\nexit 37\n", { mode: 0o700 });
+      const result = spawnSync("/bin/bash", ["scripts/validate-harbor.sh"], {
+        env: { ...process.env, PATH: `${root}:${process.env.PATH ?? ""}`, HARBOR_SOURCE: root },
+        encoding: "utf8",
+      });
+      expect(result.status, result.stderr).toBe(9);
+      expect(result.stdout).toBe("");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("serializes smoke fixture paths containing quotes, backslashes, and newlines", async () => {
     const root = await mkdtemp(join(tmpdir(), "openclaw-atif-script-"));
     const fixture = join(root, 'fixture "\\\nspace');
