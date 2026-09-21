@@ -13,10 +13,37 @@ function stopFixtureProcess(pid: number): void {
   }
 }
 
+const stopCases = [
+  {
+    reason: "abort",
+    timeoutMs: 5_000,
+    expectedMessage: "interrupted",
+    trigger: (controller: AbortController, _marker: string) => controller.abort(),
+  },
+  {
+    reason: "timeout",
+    timeoutMs: 1_000,
+    expectedMessage: "timed out",
+    trigger: (_controller: AbortController, _marker: string) => undefined,
+  },
+  {
+    reason: "overflow",
+    timeoutMs: 5_000,
+    expectedMessage: "exceeded",
+    trigger: (_controller: AbortController, marker: string) => writeFile(marker, "overflow"),
+  },
+  {
+    reason: "exited-wrapper",
+    timeoutMs: 1_000,
+    expectedMessage: "timed out",
+    trigger: (_controller: AbortController, _marker: string) => undefined,
+  },
+] as const;
+
 describe.skipIf(process.platform === "win32")("OpenClaw POSIX process ownership", () => {
-  it.each(["abort", "timeout", "overflow", "exited-wrapper"] as const)(
-    "stops inherited-pipe descendants before settling on %s",
-    async (reason) => {
+  it.each(stopCases)(
+    "stops inherited-pipe descendants before settling on $reason",
+    async ({ reason, timeoutMs, expectedMessage, trigger: triggerStop }) => {
       const root = await mkdtemp(join(tmpdir(), "openclaw-atif-tree-"));
       const worker = join(root, "worker.mjs");
       const wrapper = join(root, "wrapper.mjs");
@@ -50,7 +77,7 @@ if (mode === "exited-wrapper") { child.unref(); process.exit(0); }
       const controller = new AbortController();
       const result = runCommand(process.execPath, [wrapper, worker, root, reason], {
         signal: controller.signal,
-        timeoutMs: reason === "timeout" || reason === "exited-wrapper" ? 1_000 : 5_000,
+        timeoutMs,
         maxOutputBytes: 32,
       }).catch((error: unknown) => error);
       try {
@@ -64,13 +91,10 @@ if (mode === "exited-wrapper") { child.unref(); process.exit(0); }
             { timeout: 5_000 },
           )
           .toBe(true);
-        if (reason === "abort") controller.abort();
-        if (reason === "overflow") await writeFile(trigger, "overflow");
+        await triggerStop(controller, trigger);
         const error = await result;
         expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain(
-          reason === "abort" ? "interrupted" : reason === "overflow" ? "exceeded" : "timed out",
-        );
+        expect((error as Error).message).toContain(expectedMessage);
         const stopped = await readFile(heartbeat, "utf8");
         await delay(100);
         expect(await readFile(heartbeat, "utf8")).toBe(stopped);
