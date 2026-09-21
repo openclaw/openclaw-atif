@@ -105,6 +105,7 @@ export async function exportOpenClawFamily(options: ExportOptions): Promise<Expo
     let capability = await probeOpenClaw(options.executable, options.command);
     let executable = capability.executable;
     let stateDir = options.stateDir;
+    let command = options.command;
     let legacyMigration: LegacyMigrationReceipt | undefined;
     if (!capability.trajectoryExport) {
       if (!options.migrateCopy || !options.legacyStateDir || !options.migrationExecutable) {
@@ -112,20 +113,17 @@ export async function exportOpenClawFamily(options: ExportOptions): Promise<Expo
           "OpenClaw does not support public trajectory export; use explicit migration-on-copy inputs",
         );
       }
-      const migrationCapability = await probeOpenClaw(options.migrationExecutable, options.command);
-      if (!migrationCapability.trajectoryExport) {
-        throw new Error("Migration OpenClaw executable does not support public trajectory export");
-      }
       const migrated = await prepareLegacyMigrationCopy({
         sourceStateDir: options.legacyStateDir,
         stagingRoot,
-        executable: migrationCapability.executable,
+        executable: options.migrationExecutable,
         command: options.command,
       });
-      executable = migrationCapability.executable;
-      capability = migrationCapability;
+      executable = migrated.capability.executable;
+      capability = migrated.capability;
       stateDir = migrated.stateDir;
-      legacyCopyPath = migrated.stateDir;
+      command = migrated.command;
+      legacyCopyPath = migrated.cleanupRoot;
       legacyMigration = migrated.receipt;
     }
     const captured = await captureOpenClawFamily({
@@ -140,7 +138,7 @@ export async function exportOpenClawFamily(options: ExportOptions): Promise<Expo
       retries: options.retries,
       maxNodes: options.maxNodes,
       maxDepth: options.maxDepth,
-      command: options.command,
+      command,
     });
     const family = normalizeFamily(captured);
     const mapped = await mapFamilyToAtif(family);

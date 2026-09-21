@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Confine legacy migration and subsequent capture to a private config and environment,
+  parse JSON5 selectors, validate public migration reports, and require targeted migration support.
 - Serialize file and directory writers through a canonical destination lock, preserve recovery
   state during contention, and prevent no-force file commits from replacing concurrent output.
 - Preserve own `__proto__` JSON keys through bundle loading, tool arguments, validation, and serialization.

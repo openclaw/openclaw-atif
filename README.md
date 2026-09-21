@@ -109,7 +109,7 @@ openclaw-atif convert \
 
 OpenClaw versions with `sessions export-trajectory` own their JSONL or SQLite storage and need no special handling.
 
-For an older archive without that command, use explicit migration-on-copy. This copies the state into private temporary storage, uses OpenClaw's targeted migration commands when available or its documented non-interactive repair path otherwise, verifies the public session listing, exports it, and removes the copy:
+For an older archive without that command, use explicit migration-on-copy. This copies the state into private temporary storage, validates a separate JSON5-derived config, runs OpenClaw's targeted session migration commands, verifies the public session listing, exports it, and removes the copy:
 
 ```bash
 openclaw-atif export \
@@ -121,7 +121,17 @@ openclaw-atif export \
   --output ./openclaw-trajectory
 ```
 
-The source state is not modified.
+The migration executable must support `config validate --json` and targeted
+`doctor --session-sqlite` operations with `--session-sqlite-all-agents`. Unsupported
+versions fail with an upgrade instruction; broad `doctor --fix` is never used.
+Config selectors must be self-contained: resolve includes and environment
+substitutions first. The copy uses a private home, working directory, temporary
+directory, and config with plugins disabled. Original workspace, agent-directory,
+logging, and environment paths are excluded. This preserves the source state;
+it is not an operating-system sandbox for the selected OpenClaw executable.
+
+Hosted CI exercises real migration and export with pinned OpenClaw `2026.9.5`,
+synthetic legacy data, and unchanged original config/home/workspace sentinels.
 
 ## Source and privacy limits
 

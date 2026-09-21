@@ -50,8 +50,12 @@ import { appendFile, cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 const args = process.argv.slice(2);
 if (args[0] === "--version") { console.log("2026.8.1-test"); process.exit(0); }
-if (args[0] === "doctor" && args.includes("--help")) { console.log("--session-sqlite"); process.exit(0); }
-if (args[0] === "doctor") { console.log(JSON.stringify({ ok: true, mode: args[2] })); process.exit(0); }
+if (args[0] === "config") { console.log(JSON.stringify({ valid: true, path: process.env.OPENCLAW_CONFIG_PATH })); process.exit(0); }
+if (args[0] === "doctor" && args.includes("--help")) { console.log("--session-sqlite --session-sqlite-all-agents"); process.exit(0); }
+if (args[0] === "doctor") {
+  const state = process.env.OPENCLAW_STATE_DIR;
+  console.log(JSON.stringify({ mode: args[2], targets: [{ agentId: "main", storePath: join(state, "sessions.json"), sqlitePath: join(state, "openclaw-agent.sqlite"), issues: [] }], totals: { targets: 1, issues: 0 } })); process.exit(0);
+}
 if (args[0] === "sessions" && args[1] === "export-trajectory" && args.includes("--help")) { console.log("openclaw sessions export-trajectory"); process.exit(0); }
 if (args[0] === "sessions" && args.includes("--all-agents")) { console.log(${JSON.stringify(JSON.stringify(listing))}); process.exit(0); }
 if (args[0] === "sessions" && args[1] === "export-trajectory") {
@@ -65,7 +69,7 @@ if (args[0] === "sessions" && args[1] === "export-trajectory") {
     if (process.env.FAIL_CHILD_ALWAYS === "1") process.exit(3);
   }
   await mkdir(join(workspace, ".openclaw", "trajectory-exports"), { recursive: true });
-  await cp(join(process.env.BUNDLE_ROOT, isChild ? "child" : "root"), destination, { recursive: true });
+  await cp(join(${JSON.stringify(bundles)}, isChild ? "child" : "root"), destination, { recursive: true });
   const manifestPath = join(destination, "manifest.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   manifest.generatedAt = new Date().toISOString();
@@ -232,7 +236,7 @@ describe("captureOpenClawFamily", () => {
       command: { env: { ...process.env, BUNDLE_ROOT: fake.bundles } },
     });
     expect(result.status).toBe("complete");
-    expect(result.receipt.legacyMigration?.commands).toHaveLength(4);
+    expect(result.receipt.legacyMigration?.commands).toHaveLength(7);
   });
 
   it("rejects unsupported export without explicit migration inputs", async () => {

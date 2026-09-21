@@ -1,11 +1,17 @@
-/* eslint-disable complexity -- Legacy migration selects one of two documented OpenClaw command surfaces. */
+/* eslint-disable complexity -- Migration validates public preflight and result contracts before advancing. */
 import { createHash } from "node:crypto";
-import { chmod, cp, lstat, readdir, readFile, realpath, writeFile } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
-import { parseStructuredOutput } from "../openclaw/capabilities.js";
+import { chmod, cp, lstat, mkdir, readdir, readFile, realpath } from "node:fs/promises";
+import { isAbsolute, join, relative, resolve } from "node:path";
+import { asRecord } from "../json.js";
+import {
+  type OpenClawCapability,
+  parseStructuredOutput,
+  probeOpenClaw,
+} from "../openclaw/capabilities.js";
 import { type CommandOptions, runOpenClaw } from "../openclaw/process.js";
 import { compareCodeUnits } from "../ordering.js";
 import { stableCompactStringify } from "../stable-json.js";
+import { isInside, prepareMigrationRuntime } from "./config.js";
 
 export interface LegacyMigrationReceipt {
   sourceFingerprintBefore: string;
@@ -49,53 +55,42 @@ function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function isInside(root: string, target: string): boolean {
-  const location = relative(root, target);
-  return !location.split(sep).includes("..") && !isAbsolute(location);
-}
-
-async function confineCopiedSessionStore(
-  source: string,
-  sourceArgument: string,
+function validateMigrationReport(
+  output: string,
+  mode: string,
   destination: string,
-): Promise<void> {
-  const configPath = join(destination, "openclaw.json");
-  let raw: string;
-  try {
-    raw = await readFile(configPath, "utf8");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-    throw error;
+  targets: Map<string, string>,
+): void {
+  const report = parseStructuredOutput(output);
+  const totals = asRecord(report.totals);
+  if (
+    report.mode !== mode ||
+    !Array.isArray(report.targets) ||
+    totals?.targets !== report.targets.length ||
+    totals.issues !== 0
+  )
+    throw new Error(`Invalid or failed OpenClaw session migration report: ${mode}`);
+  for (const value of report.targets) {
+    const target = asRecord(value);
+    if (
+      typeof target?.agentId !== "string" ||
+      !Array.isArray(target.issues) ||
+      target.issues.length !== 0
+    )
+      throw new Error("OpenClaw migration target has missing identity or reported issues");
+    for (const key of ["storePath", "sqlitePath"]) {
+      const path = target[key];
+      if (typeof path !== "string" || !isAbsolute(path) || !isInside(destination, resolve(path)))
+        throw new Error("OpenClaw migration target resolves outside the copied state");
+    }
+    const store = target.storePath as string;
+    const sqlite = target.sqlitePath as string;
+    const key = `${target.agentId}\0${store}`;
+    const prior = targets.get(key);
+    if (prior !== undefined && prior !== sqlite)
+      throw new Error("OpenClaw migration target changed after preflight");
+    targets.set(key, sqlite);
   }
-  let config: Record<string, unknown>;
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
-      throw new Error("OpenClaw config must be an object");
-    config = parsed as Record<string, unknown>;
-  } catch (error) {
-    throw new Error("Legacy migration cannot safely inspect openclaw.json", { cause: error });
-  }
-  const session = config.session;
-  if (!session || typeof session !== "object" || Array.isArray(session)) return;
-  const sessionConfig = session as Record<string, unknown>;
-  if (sessionConfig.store === undefined) return;
-  if (typeof sessionConfig.store !== "string" || !isAbsolute(sessionConfig.store)) {
-    throw new Error("Legacy session.store must be an absolute path inside the copied state");
-  }
-  const configuredStore = resolve(sessionConfig.store);
-  const sourceRoot = isInside(source, configuredStore)
-    ? source
-    : isInside(sourceArgument, configuredStore)
-      ? sourceArgument
-      : undefined;
-  if (sourceRoot) {
-    sessionConfig.store = join(destination, relative(sourceRoot, configuredStore));
-  } else if (!isInside(destination, configuredStore)) {
-    throw new Error("Legacy session.store resolves outside the copied state");
-  }
-  await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
-  await chmod(configPath, 0o600);
 }
 
 export async function prepareLegacyMigrationCopy(params: {
@@ -103,7 +98,13 @@ export async function prepareLegacyMigrationCopy(params: {
   stagingRoot: string;
   executable: string;
   command?: CommandOptions;
-}): Promise<{ stateDir: string; receipt: LegacyMigrationReceipt }> {
+}): Promise<{
+  stateDir: string;
+  cleanupRoot: string;
+  command: CommandOptions;
+  capability: OpenClawCapability;
+  receipt: LegacyMigrationReceipt;
+}> {
   const sourceArgument = resolve(params.sourceStateDir);
   const source = await realpath(sourceArgument);
   const details = await lstat(source);
@@ -111,64 +112,86 @@ export async function prepareLegacyMigrationCopy(params: {
     throw new Error("Legacy source state must be a regular directory");
   await assertNoSymlinks(source);
   const before = await treeFingerprint(source);
-  const destination = join(params.stagingRoot, "legacy-state-copy");
-  await cp(source, destination, {
+  const cleanupRoot = join(params.stagingRoot, "legacy-migration");
+  await mkdir(cleanupRoot, { mode: 0o700 });
+  const copyPath = join(cleanupRoot, "state");
+  await cp(source, copyPath, {
     recursive: true,
     force: false,
     errorOnExist: true,
     dereference: false,
     preserveTimestamps: true,
   });
+  const destination = await realpath(copyPath);
   await chmod(destination, 0o700);
   await assertNoSymlinks(destination);
   const afterCopy = await treeFingerprint(source);
   if (before !== afterCopy)
     throw new Error("Legacy source state changed while creating the migration copy");
-  await confineCopiedSessionStore(source, sourceArgument, destination);
+  const { command: commandOptions, configPath } = await prepareMigrationRuntime({
+    source,
+    sourceArgument,
+    destination,
+    stagingRoot: cleanupRoot,
+    command: params.command,
+  });
+  const capability = await probeOpenClaw(params.executable, commandOptions);
+  if (!capability.trajectoryExport)
+    throw new Error("Migration OpenClaw executable does not support public trajectory export");
   const commands: LegacyMigrationReceipt["commands"] = [];
-  const commandOptions = {
-    ...params.command,
-    env: { ...(params.command?.env ?? process.env), OPENCLAW_STATE_DIR: destination },
-  };
-  const help = await runOpenClaw(params.executable, ["doctor", "--help"], commandOptions);
-  const targeted = `${help.stdout}\n${help.stderr}`.includes("--session-sqlite");
-  const invocations: { mode: string; args: string[] }[] = targeted
-    ? ["inspect", "dry-run", "import", "validate"].map((mode) => ({
-        mode,
-        args: ["doctor", "--session-sqlite", mode, "--session-sqlite-all-agents", "--json"],
-      }))
-    : [
-        { mode: "fix", args: ["doctor", "--fix", "--non-interactive", "--yes"] },
-        {
-          mode: "sessions-list-verify",
-          args: ["sessions", "--all-agents", "--limit", "all", "--json"],
-        },
-      ];
-  for (const invocation of invocations) {
-    const result = await runOpenClaw(params.executable, invocation.args, commandOptions);
-    let sessionCount: number | undefined;
-    if (invocation.mode === "sessions-list-verify") {
-      const listing = parseStructuredOutput(result.stdout);
-      if (!Array.isArray(listing.sessions)) {
-        throw new Error("Migrated legacy copy did not produce a public session listing");
-      }
-      sessionCount = listing.sessions.length;
-    }
+  const validated = parseStructuredOutput(
+    (await runOpenClaw(capability.executable, ["config", "validate", "--json"], commandOptions))
+      .stdout,
+  );
+  if (validated.valid !== true || validated.path !== configPath)
+    throw new Error("OpenClaw did not validate the private migration config");
+  commands.push({ mode: "config-validate", evidenceSha256: digest("config-valid") });
+  const help = await runOpenClaw(capability.executable, ["doctor", "--help"], commandOptions);
+  const helpText = `${help.stdout}\n${help.stderr}`;
+  if (!helpText.includes("--session-sqlite") || !helpText.includes("--session-sqlite-all-agents"))
+    throw new Error(
+      "Migration requires an OpenClaw version with targeted --session-sqlite and --session-sqlite-all-agents support",
+    );
+  const targets = new Map<string, string>();
+  for (const mode of ["inspect", "dry-run", "import", "validate", "inspect"]) {
+    const result = await runOpenClaw(
+      capability.executable,
+      ["doctor", "--session-sqlite", mode, "--session-sqlite-all-agents", "--json"],
+      commandOptions,
+    );
+    validateMigrationReport(result.stdout, mode, destination, targets);
     commands.push({
-      mode: invocation.mode,
-      evidenceSha256: digest(
-        stableCompactStringify({
-          mode: invocation.mode,
-          status: "succeeded",
-          ...(sessionCount !== undefined ? { sessionCount } : {}),
-        }),
-      ),
+      mode,
+      evidenceSha256: digest(stableCompactStringify({ mode, status: "succeeded" })),
     });
   }
+  const listing = parseStructuredOutput(
+    (
+      await runOpenClaw(
+        capability.executable,
+        ["sessions", "--all-agents", "--limit", "all", "--json"],
+        commandOptions,
+      )
+    ).stdout,
+  );
+  if (!Array.isArray(listing.sessions))
+    throw new Error("Migrated legacy copy did not produce a public session listing");
+  commands.push({
+    mode: "sessions-list-verify",
+    evidenceSha256: digest(
+      stableCompactStringify({
+        mode: "sessions-list-verify",
+        sessionCount: listing.sessions.length,
+      }),
+    ),
+  });
   const after = await treeFingerprint(source);
   if (before !== after) throw new Error("Legacy source state changed during migration-on-copy");
   return {
     stateDir: destination,
+    cleanupRoot,
+    command: commandOptions,
+    capability,
     receipt: { sourceFingerprintBefore: before, sourceFingerprintAfter: after, commands },
   };
 }

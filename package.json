@@ -63,6 +63,7 @@
     "validate:harbor": "bash scripts/validate-harbor.sh"
   },
   "dependencies": {
+    "json5": "2.2.3",
     "zod": "4.4.3"
   },
   "devDependencies": {
