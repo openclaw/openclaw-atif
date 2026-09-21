@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.1.2 — 2026-09-21
+
+- Prepare the first functional `@openclaw/openclaw-atif` release from the OpenClaw
+  organization while retaining the `openclaw-atif` CLI command.
+- Add CodeQL analysis and publish the exact smoke-tested npm tarball with provenance
+  and registry integrity verification.
+- Stop the owned OpenClaw process group on POSIX cancellation, timeout, or output
+  overflow, and wait for inherited pipes to close before removing private staging.
+- Omit unobserved LLM call counts instead of treating every assistant transcript
+  entry, including local delivery mirrors, as a model call.
+- Add repository ownership, contribution and security guidance, issue and pull
+  request templates, dependency-update configuration, and the canonical autoreview skill.
 - Update checkout to v7.0.1 in CI, CodeQL analysis, and publishing.
 - Resume interrupted legacy journal adoption when both marker names identify the same verified file.
 - Preserve implicit empty legacy agent rosters for OpenClaw's main-agent migration.
@@ -30,19 +42,6 @@
 - Preserve leading and trailing whitespace in CLI paths, including forced output replacement.
 - Report invalid CLI arguments as concise errors with exit code 1 and no leaked signal listeners.
 - Refresh Biome, ESLint, typescript-eslint, and slophammer development validation tools.
-
-## 0.1.2 — 2026-09-21
-
-- Prepare the first functional `@openclaw/openclaw-atif` release from the OpenClaw
-  organization while retaining the `openclaw-atif` CLI command.
-- Add CodeQL analysis and publish the exact smoke-tested npm tarball with provenance
-  and registry integrity verification.
-- Stop the owned OpenClaw process group on POSIX cancellation, timeout, or output
-  overflow, and wait for inherited pipes to close before removing private staging.
-- Omit unobserved LLM call counts instead of treating every assistant transcript
-  entry, including local delivery mirrors, as a model call.
-- Add repository ownership, contribution and security guidance, issue and pull
-  request templates, dependency-update configuration, and the canonical autoreview skill.
 
 ## 0.1.1 — 2026-09-18
 
