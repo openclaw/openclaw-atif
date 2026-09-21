@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Read bundle and media files through one bounded descriptor lifecycle, rejecting file races
+  and enforcing the bundle's aggregate byte limit before each read.
 - Stop Harbor validation when fixture discovery fails, including after partial results.
 - Encode real-OpenClaw smoke fixture paths safely as JSON.
 - Serialize npm publication and reject stale release versions before they can move `latest` backwards.
