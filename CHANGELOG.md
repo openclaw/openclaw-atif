@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Serialize npm publication and reject stale release versions before they can move `latest` backwards.
 - Preserve leading and trailing whitespace in CLI paths, including forced output replacement.
 - Report invalid CLI arguments as concise errors with exit code 1 and no leaked signal listeners.
 
