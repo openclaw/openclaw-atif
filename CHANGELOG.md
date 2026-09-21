@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Resume interrupted legacy journal adoption when both marker names identify the same verified file.
+- Preserve implicit empty legacy agent rosters for OpenClaw's main-agent migration.
 - Recover verified v0.1.1 transactions created with trailing-slash destinations without touching ambiguous backups.
 - Confine legacy migration and subsequent capture to a private config and environment,
   parse JSON5 selectors, validate public migration reports, and require targeted migration support.
@@ -14,11 +16,12 @@
 - Reject capture cycles back to the selected root for every relationship kind.
 - Skip non-file PATH entries when resolving the OpenClaw executable.
 - Preserve cancellation during OpenClaw capability probing instead of reporting missing export support.
-- Read bundle and media files through one bounded descriptor lifecycle, rejecting file races
+- Read bundle and media files through one bounded descriptor lifecycle, rejecting leaf replacement and detected file mutations
   and enforcing the bundle's aggregate byte limit before each read.
 - Stop Harbor validation when fixture discovery fails, including after partial results.
 - Encode real-OpenClaw smoke fixture paths safely as JSON.
 - Serialize npm publication and reject stale release versions before they can move `latest` backwards.
+- Update setup-node to v7.0.0 in CI and publishing while retaining the Node.js 24 runtime.
 - Preserve leading and trailing whitespace in CLI paths, including forced output replacement.
 - Report invalid CLI arguments as concise errors with exit code 1 and no leaked signal listeners.
 
