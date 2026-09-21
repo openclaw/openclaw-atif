@@ -19,7 +19,7 @@ function record(value: unknown): Record<string, unknown> {
 async function readConfig(root: string): Promise<Record<string, unknown>> {
   for (const name of ["openclaw.json", "clawdbot.json"]) {
     try {
-      return record(JSON5.parse(await readFile(join(root, name), "utf8")) as unknown);
+      return record(JSON5.parse(await readFile(join(root, name), "utf8")));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
@@ -52,6 +52,7 @@ function projectAgent(value: unknown): Record<string, unknown> {
   return output;
 }
 
+// eslint-disable-next-line complexity -- Roster projection keeps ownership and identity validation together.
 function projectAgents(value: unknown, workspace: string): Record<string, unknown> {
   const source = value === undefined ? {} : record(value);
   if (source.list !== undefined && source.entries !== undefined)
@@ -88,7 +89,7 @@ function projectAgents(value: unknown, workspace: string): Record<string, unknow
     );
   }
   if (
-    ids.size === 0 ||
+    (ids.size === 0 && source.ownership === "explicit") ||
     defaults > 1 ||
     (defaults > 0 && source.ownership === "explicit") ||
     (ids.size > 1 && defaults === 0 && source.ownership !== "explicit")
@@ -108,6 +109,7 @@ function projectAgents(value: unknown, workspace: string): Record<string, unknow
   return output;
 }
 
+// eslint-disable-next-line complexity -- Private config and environment selectors share one isolation boundary.
 export async function prepareMigrationRuntime(params: {
   source: string;
   sourceArgument: string;
@@ -173,4 +175,3 @@ export async function prepareMigrationRuntime(params: {
   });
   return { configPath, command: { ...params.command, cwd: root, env } };
 }
-/* eslint-disable complexity -- Legacy selectors are projected and validated without retaining executable config. */

@@ -1,5 +1,15 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  link,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -36,11 +46,20 @@ async function legacyFixture(phase: "before" | "backup" | "committed") {
 }
 
 describe("v0.1.1 trailing-slash journal recovery", () => {
-  it.each(["before", "backup", "committed"] as const)(
-    "recovers the %s crash point",
-    async (phase) => {
+  it.each([
+    ["before", false],
+    ["backup", false],
+    ["committed", false],
+    ["before", true],
+    ["backup", true],
+    ["committed", true],
+  ] as const)(
+    "recovers the %s crash point with pending adoption=%s",
+    async (phase, pendingAdoption) => {
       const fixture = await legacyFixture(phase);
       try {
+        if (pendingAdoption)
+          await link(fixture.marker, `${fixture.destination}.openclaw-atif-transaction.json`);
         const content = phase === "committed" ? "new" : "old";
         const result = await writeAtomicDirectory(
           `${fixture.destination}/`,
@@ -73,13 +92,13 @@ describe("v0.1.1 trailing-slash journal recovery", () => {
     }
   });
 
-  it.each(["canonical", "second-legacy", "invalid"])(
+  it.each(["canonical", "second-legacy", "linked-second-legacy", "invalid"])(
     "preserves ambiguous %s journals",
     async (kind) => {
       const fixture = await legacyFixture("before");
       try {
         let other: string;
-        if (kind === "second-legacy") {
+        if (kind === "second-legacy" || kind === "linked-second-legacy") {
           await mkdir(fixture.backup);
           other = join(fixture.backup, ".openclaw-atif-transaction.json");
         } else if (kind === "canonical") {
@@ -87,10 +106,14 @@ describe("v0.1.1 trailing-slash journal recovery", () => {
         } else other = fixture.marker;
         const content = kind === "invalid" ? "not a journal" : fixture.transaction;
         await writeFile(other, content);
+        const canonical = `${fixture.destination}.openclaw-atif-transaction.json`;
+        if (kind === "linked-second-legacy") await link(fixture.marker, canonical);
         await expect(
           writeAtomicDirectory(fixture.destination, new Map([["a.json", "new"]]), true),
         ).rejects.toThrow("different content");
         expect(await readFile(other, "utf8")).toBe(content);
+        if (kind === "linked-second-legacy")
+          expect(await readFile(canonical, "utf8")).toBe(fixture.transaction);
         expect(await readFile(join(fixture.destination, "a.json"), "utf8")).toBe("old");
         expect(await readFile(join(fixture.stage, "a.json"), "utf8")).toBe("new");
       } finally {
