@@ -1,0 +1,12 @@
+* @openclaw/maintainer
+
+# Security and release ownership.
+/.github/ @openclaw/openclaw-secops
+/.agents/skills/ @openclaw/openclaw-secops
+/AGENTS.md @openclaw/openclaw-secops
+/CLAUDE.md @openclaw/openclaw-secops
+/CONTRIBUTING.md @openclaw/openclaw-secops
+/SECURITY.md @openclaw/openclaw-secops
+/package.json @openclaw/openclaw-secops
+/package-lock.json @openclaw/openclaw-secops
+/scripts/ @openclaw/openclaw-secops

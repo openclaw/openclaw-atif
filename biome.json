@@ -3,6 +3,7 @@
   "files": {
     "includes": [
       "**",
+      "!!.agents",
       "!!dist",
       "!!coverage",
       "!!node_modules",

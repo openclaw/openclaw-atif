@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a reproducible export, conversion, or installation defect.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Use synthetic examples. Do not attach private session bundles, credentials, or personal paths.
+  - type: input
+    id: version
+    attributes:
+      label: Package version or commit
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Node.js, OpenClaw, and operating system versions
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the command or API call and a synthetic bundle when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include redacted errors or receipt diagnostics and the exit code.
+    validations:
+      required: true
