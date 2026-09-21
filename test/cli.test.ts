@@ -70,10 +70,25 @@ describe("CLI", () => {
     expect(completedExitCode("partial", undefined)).toBe(2);
   });
 
-  it("returns one for invalid command input", async () => {
+  it.each([
+    [["unknown"], "Unknown command: unknown"],
+    [["convert", "--wat"], "Unknown option: --wat"],
+    [["convert", "--output"], "Option --output requires a value"],
+    [
+      ["convert", "--output", "a", "--output", "b"],
+      "Option --output was supplied more than once",
+    ],
+    [["convert"], "--output is required"],
+    [["convert", "--output", "out"], "--graph is required"],
+  ] as const)("reports invalid input %j without leaking signal listeners", async (args, message) => {
     const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-    expect(await runCli(["convert", "--output", "out"])).toBe(1);
-    expect(String(stderr.mock.calls.at(-1)?.[0])).toContain("--graph is required");
-    stderr.mockRestore();
+    const before = [process.listeners("SIGINT"), process.listeners("SIGTERM")];
+    try {
+      await expect(runCli(args)).resolves.toBe(1);
+      expect(stderr.mock.calls).toEqual([[`${message}\n`]]);
+      expect([process.listeners("SIGINT"), process.listeners("SIGTERM")]).toEqual(before);
+    } finally {
+      stderr.mockRestore();
+    }
   });
 });

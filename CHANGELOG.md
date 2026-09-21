@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Report invalid CLI arguments as concise errors with exit code 1 and no leaked signal listeners.
+
 ## 0.1.2 — 2026-09-21
 
 - Prepare the first functional `@openclaw/openclaw-atif` release from the OpenClaw

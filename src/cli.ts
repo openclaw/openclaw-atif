@@ -138,16 +138,6 @@ export function completedExitCode(
 }
 
 export async function runCli(args: readonly string[]): Promise<number> {
-  const parsed = parseCliArgs(args);
-  if (parsed.command === "help") {
-    process.stdout.write(HELP);
-    return 0;
-  }
-  if (parsed.command === "version") {
-    process.stdout.write(`${PACKAGE_VERSION}\n`);
-    return 0;
-  }
-  const output = required(parsed.values, "output");
   const controller = new AbortController();
   let signalExit: number | undefined;
   const onInt = () => {
@@ -158,9 +148,19 @@ export async function runCli(args: readonly string[]): Promise<number> {
     signalExit = 143;
     controller.abort();
   };
-  process.once("SIGINT", onInt);
-  process.once("SIGTERM", onTerm);
   try {
+    const parsed = parseCliArgs(args);
+    if (parsed.command === "help") {
+      process.stdout.write(HELP);
+      return 0;
+    }
+    if (parsed.command === "version") {
+      process.stdout.write(`${PACKAGE_VERSION}\n`);
+      return 0;
+    }
+    const output = required(parsed.values, "output");
+    process.once("SIGINT", onInt);
+    process.once("SIGTERM", onTerm);
     const shared = {
       output,
       requireComplete: parsed.flags.has("require-complete"),
