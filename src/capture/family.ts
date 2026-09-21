@@ -1,6 +1,6 @@
 /* eslint-disable complexity -- Capture lifecycle states are kept in one bounded adapter. */
 import { chmod, lstat, mkdir, realpath } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { Diagnostic } from "../diagnostics.js";
 import { readNonBlankString } from "../json.js";
 import type { SessionListing, SessionListingRow } from "../models/bundle-v1.js";
@@ -59,7 +59,7 @@ async function validateBundleDirectory(stagingRoot: string, value: string): Prom
   const root = await realpath(stagingRoot);
   const candidate = await realpath(isAbsolute(value) ? value : resolve(stagingRoot, value));
   const location = relative(root, candidate);
-  if (!location || location.startsWith("..") || isAbsolute(location))
+  if (!location || location.split(sep).includes("..") || isAbsolute(location))
     throw new Error("OpenClaw returned an export directory outside private staging");
   const details = await lstat(candidate);
   if (!details.isDirectory() || details.isSymbolicLink())

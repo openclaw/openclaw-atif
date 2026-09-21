@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Accept contained paths whose components begin with two dots without allowing parent traversal.
 - Reject capture cycles back to the selected root for every relationship kind.
 - Skip non-file PATH entries when resolving the OpenClaw executable.
 - Preserve cancellation during OpenClaw capability probing instead of reporting missing export support.

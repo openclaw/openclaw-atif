@@ -1,7 +1,7 @@
 /* eslint-disable complexity -- Graph validation enumerates all contract failures. */
 import { createHash } from "node:crypto";
 import { readFile, realpath } from "node:fs/promises";
-import { isAbsolute, join, relative } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import { asRecord, readNonBlankString } from "../json.js";
 import type {
   BundleGraphManifest,
@@ -68,7 +68,7 @@ async function resolveBundle(root: string, relativePath: string): Promise<string
   const realRoot = await realpath(root);
   const candidate = await realpath(join(realRoot, relativePath));
   const location = relative(realRoot, candidate);
-  if (location.startsWith("..") || isAbsolute(location))
+  if (location.split(sep).includes("..") || isAbsolute(location))
     throw new Error("Bundle graph path escaped bundle root");
   return candidate;
 }

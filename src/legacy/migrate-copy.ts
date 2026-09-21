@@ -1,7 +1,7 @@
 /* eslint-disable complexity -- Legacy migration selects one of two documented OpenClaw command surfaces. */
 import { createHash } from "node:crypto";
 import { chmod, cp, lstat, readdir, readFile, realpath, writeFile } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseStructuredOutput } from "../openclaw/capabilities.js";
 import { type CommandOptions, runOpenClaw } from "../openclaw/process.js";
 import { compareCodeUnits } from "../ordering.js";
@@ -51,7 +51,7 @@ function digest(value: string): string {
 
 function isInside(root: string, target: string): boolean {
   const location = relative(root, target);
-  return location === "" || (!location.startsWith("..") && !isAbsolute(location));
+  return !location.split(sep).includes("..") && !isAbsolute(location);
 }
 
 async function confineCopiedSessionStore(
