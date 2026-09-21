@@ -19,6 +19,7 @@
 - Read bundle and media files through one bounded descriptor lifecycle, rejecting leaf replacement and detected file mutations
   and enforcing the bundle's aggregate byte limit before each read.
 - Stop Harbor validation when fixture discovery fails, including after partial results.
+- Update setup-python to v7.0.0 for CI and publishing validation with Python 3.12.
 - Encode real-OpenClaw smoke fixture paths safely as JSON.
 - Serialize npm publication and reject stale release versions before they can move `latest` backwards.
 - Update setup-node to v7.0.0 in CI and publishing while retaining the Node.js 24 runtime.
