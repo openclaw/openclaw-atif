@@ -1,6 +1,6 @@
 {
   "name": "@openclaw/openclaw-atif",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Export OpenClaw session families as Harbor ATIF trajectories",
   "type": "module",
   "license": "MIT",
@@ -34,10 +34,12 @@
   "files": [
     "dist",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
@@ -61,6 +63,7 @@
     "validate:harbor": "bash scripts/validate-harbor.sh"
   },
   "dependencies": {
+    "json5": "2.2.3",
     "zod": "4.4.3"
   },
   "devDependencies": {
@@ -73,7 +76,7 @@
     "@vitest/coverage-v8": "4.1.11",
     "eslint": "10.8.1",
     "slophammer-ts": "0.4.1",
-    "typescript": "7.0.2",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.67.0",
     "vitest": "4.1.11"
   },

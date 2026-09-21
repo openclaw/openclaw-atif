@@ -15,12 +15,23 @@ file_mode() {
   fi
 }
 
-PACKAGE="$("$NODE" "$NPM" pack --silent --pack-destination "$TEMP_ROOT" | tail -n 1)"
+if [[ -z "${PACKAGE_TARBALL:-}" ]]; then
+  PACKAGE="$("$NODE" "$NPM" pack --silent --pack-destination "$TEMP_ROOT" | tail -n 1)"
+  PACKAGE_TARBALL="$TEMP_ROOT/$PACKAGE"
+fi
 mkdir -p "$TEMP_ROOT/install"
-"$NODE" "$NPM" install --silent --omit=dev --ignore-scripts --prefix "$TEMP_ROOT/install" "$TEMP_ROOT/$PACKAGE"
+"$NODE" "$NPM" install --silent --omit=dev --ignore-scripts --prefix "$TEMP_ROOT/install" "$PACKAGE_TARBALL"
 CLI="$TEMP_ROOT/install/node_modules/.bin/openclaw-atif"
 "$NODE" "$CLI" --help >/dev/null
-"$NODE" "$CLI" --version >/dev/null
+test "$("$NODE" "$CLI" --version)" = "$("$NODE" -p 'require("./package.json").version')"
+set +e
+"$NODE" "$CLI" convert --unknown >"$TEMP_ROOT/invalid-output" 2>"$TEMP_ROOT/invalid-error"
+CODE=$?
+set -e
+test "$CODE" = 1
+test ! -s "$TEMP_ROOT/invalid-output"
+test "$(cat "$TEMP_ROOT/invalid-error")" = 'Unknown option: --unknown'
+(cd "$TEMP_ROOT/install" && "$NODE" --input-type=module -e 'import { mapFamilyToAtif, exportOpenClawFamily } from "@openclaw/openclaw-atif"; if (typeof mapFamilyToAtif !== "function" || typeof exportOpenClawFamily !== "function") process.exit(1)')
 "$NODE" "$CLI" convert \
   --graph "$ROOT/fixtures/bundles/legacy-jsonl/graph.json" \
   --bundle-root "$ROOT/fixtures/bundles/legacy-jsonl" \

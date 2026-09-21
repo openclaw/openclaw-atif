@@ -8,38 +8,42 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+
 concurrency:
-  group: npm-publish-${{ github.event.release.tag_name }}
+  group: openclaw-atif-npm-publish
   cancel-in-progress: false
+  queue: max
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: "24.18.0"
-          cache: npm
+          package-manager-cache: false
           registry-url: https://registry.npmjs.org
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
+      - name: Set npm trusted publishing version
+        run: npm install --global npm@11.19.0 --ignore-scripts
       - name: Verify release
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          PACKAGE_NAME="$(node -p 'require("./package.json").name')"
           PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
-          PACKAGE_SPEC="$PACKAGE_NAME@$PACKAGE_VERSION"
 
-          if [[ "$RELEASE_TAG" != "v$PACKAGE_VERSION" ]]; then
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ || "$RELEASE_TAG" != "v$PACKAGE_VERSION" ]]; then
             echo "Release tag $RELEASE_TAG does not match package version $PACKAGE_VERSION" >&2
             exit 1
           fi
@@ -49,33 +53,74 @@ jobs:
             echo "The release commit is not on $DEFAULT_BRANCH" >&2
             exit 1
           fi
-
-          if npm view "$PACKAGE_SPEC" version >/tmp/npm-version 2>/tmp/npm-view-error; then
-            echo "$PACKAGE_SPEC is already published" >&2
-            exit 1
-          fi
-          if ! grep -q "E404" /tmp/npm-view-error; then
-            cat /tmp/npm-view-error >&2
-            exit 1
-          fi
       - run: npm ci
       - run: npm run check
       - run: npm run mutate
       - run: npm run slophammer
       - run: npm run validate:harbor
+      - name: Pack tested build
+        run: node scripts/pack-release.mjs "$RUNNER_TEMP/package"
       - run: npm run smoke:cli
+      - name: Install pinned migration dependency
+        run: npm install --prefix "$RUNNER_TEMP/migration-openclaw" --ignore-scripts --omit=dev openclaw@2026.9.5
+      - name: Verify real migration preserves original state
+        run: node scripts/smoke-migration.mjs "$RUNNER_TEMP/migration-openclaw"
+      - name: Check registry artifact
+        id: registry
+        run: |
+          set -euo pipefail
+          PACKAGE_NAME="$(node -p 'require("./package.json").name')"
+          PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
+          PACKAGE_SPEC="$PACKAGE_NAME@$PACKAGE_VERSION"
+          if npm view "$PACKAGE_SPEC" --json >"$RUNNER_TEMP/npm-package.json" 2>"$RUNNER_TEMP/npm-view-error"; then
+            node scripts/check-release-package.mjs "$RUNNER_TEMP/npm-package.json"
+            echo "already_published=true" >>"$GITHUB_OUTPUT"
+          elif grep -q "E404" "$RUNNER_TEMP/npm-view-error"; then
+            LATEST_VERSION="$(npm view "$PACKAGE_NAME" dist-tags.latest)"
+            node scripts/check-release-version.mjs "$PACKAGE_VERSION" "$LATEST_VERSION"
+            echo "already_published=false" >>"$GITHUB_OUTPUT"
+          else
+            cat "$RUNNER_TEMP/npm-view-error" >&2
+            exit 1
+          fi
       - name: Publish package
-        run: npm publish --provenance --access public
+        if: steps.registry.outputs.already_published != 'true'
+        run: npm publish "$PACKAGE_TARBALL" --ignore-scripts --provenance --access public
       - name: Verify package
         run: |
           set -euo pipefail
           PACKAGE_NAME="$(node -p 'require("./package.json").name')"
           PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
+          PACKAGE_SPEC="$PACKAGE_NAME@$PACKAGE_VERSION"
+          pending="package metadata"
           for attempt in {1..12}; do
-            if [[ "$(npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version 2>/dev/null)" == "$PACKAGE_VERSION" ]]; then
-              exit 0
+            if npm view "$PACKAGE_SPEC" --json >"$RUNNER_TEMP/npm-package.json" 2>"$RUNNER_TEMP/npm-view-error"; then
+              set +e
+              node scripts/check-release-package.mjs "$RUNNER_TEMP/npm-package.json" --require-provenance
+              status=$?
+              set -e
+              if [[ "$status" -eq 0 ]]; then
+                LATEST_VERSION="$(npm view "$PACKAGE_NAME" dist-tags.latest)"
+                if [[ "$LATEST_VERSION" != "$PACKAGE_VERSION" ]]; then
+                  echo "npm latest points to $LATEST_VERSION instead of $PACKAGE_VERSION" >&2
+                  exit 1
+                fi
+                exit 0
+              fi
+              if [[ "$status" -ne 75 ]]; then
+                exit "$status"
+              fi
+              pending="provenance metadata"
+            elif grep -q "E404" "$RUNNER_TEMP/npm-view-error"; then
+              pending="package metadata"
+            else
+              cat "$RUNNER_TEMP/npm-view-error" >&2
+              exit 1
             fi
-            sleep 5
+            if [[ "$attempt" -lt 12 ]]; then
+              echo "Waiting for $pending (attempt $attempt/12)"
+              sleep 5
+            fi
           done
-          echo "$PACKAGE_NAME@$PACKAGE_VERSION did not appear on npm" >&2
+          echo "$PACKAGE_SPEC did not expose $pending after 12 attempts" >&2
           exit 1

@@ -267,7 +267,8 @@ async function messageStep(
       : {}),
     ...(toolCalls && toolCalls.length > 0 ? { tool_calls: toolCalls } : {}),
     ...(metricsFromMessage(message) ? { metrics: metricsFromMessage(message) } : {}),
-    llm_call_count: 1,
+    // Transcript assistant entries can be local mirrors, not model calls.
+    // The public bundle does not establish a per-entry LLM call count.
     extra: {
       openclaw: {
         entry_id: event.entryId ?? null,

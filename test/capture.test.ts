@@ -6,7 +6,7 @@ import { captureOpenClawFamily } from "../src/capture/family.js";
 import { exportOpenClawFamily } from "../src/exporter.js";
 import { childEvents, rootEvents, writeBundle } from "./helpers.js";
 
-async function fakeOpenClaw() {
+async function fakeOpenClaw(rootParentKind?: string) {
   const root = await mkdtemp(join(tmpdir(), "openclaw-atif-capture-"));
   const bundles = join(root, "bundles");
   await writeBundle({
@@ -25,7 +25,14 @@ async function fakeOpenClaw() {
   });
   const listing = {
     sessions: [
-      { key: "agent:main:main", sessionId: "root-session", updatedAt: 1 },
+      {
+        key: "agent:main:main",
+        sessionId: "root-session",
+        updatedAt: 1,
+        ...(rootParentKind
+          ? { parentSessionKey: "agent:main:subagent:child", kind: rootParentKind }
+          : {}),
+      },
       {
         key: "agent:main:subagent:child",
         sessionId: "child-session",
@@ -43,8 +50,12 @@ import { appendFile, cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 const args = process.argv.slice(2);
 if (args[0] === "--version") { console.log("2026.8.1-test"); process.exit(0); }
-if (args[0] === "doctor" && args.includes("--help")) { console.log("--session-sqlite"); process.exit(0); }
-if (args[0] === "doctor") { console.log(JSON.stringify({ ok: true, mode: args[2] })); process.exit(0); }
+if (args[0] === "config") { console.log(JSON.stringify({ valid: true, path: process.env.OPENCLAW_CONFIG_PATH })); process.exit(0); }
+if (args[0] === "doctor" && args.includes("--help")) { console.log("--session-sqlite --session-sqlite-all-agents"); process.exit(0); }
+if (args[0] === "doctor") {
+  const state = process.env.OPENCLAW_STATE_DIR;
+  console.log(JSON.stringify({ mode: args[2], targets: [{ agentId: "main", storePath: join(state, "sessions.json"), sqlitePath: join(state, "openclaw-agent.sqlite"), issues: [] }], totals: { targets: 1, issues: 0 } })); process.exit(0);
+}
 if (args[0] === "sessions" && args[1] === "export-trajectory" && args.includes("--help")) { console.log("openclaw sessions export-trajectory"); process.exit(0); }
 if (args[0] === "sessions" && args.includes("--all-agents")) { console.log(${JSON.stringify(JSON.stringify(listing))}); process.exit(0); }
 if (args[0] === "sessions" && args[1] === "export-trajectory") {
@@ -58,7 +69,7 @@ if (args[0] === "sessions" && args[1] === "export-trajectory") {
     if (process.env.FAIL_CHILD_ALWAYS === "1") process.exit(3);
   }
   await mkdir(join(workspace, ".openclaw", "trajectory-exports"), { recursive: true });
-  await cp(join(process.env.BUNDLE_ROOT, isChild ? "child" : "root"), destination, { recursive: true });
+  await cp(join(${JSON.stringify(bundles)}, isChild ? "child" : "root"), destination, { recursive: true });
   const manifestPath = join(destination, "manifest.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   manifest.generatedAt = new Date().toISOString();
@@ -74,6 +85,24 @@ process.exit(2);
 }
 
 describe("captureOpenClawFamily", () => {
+  it.each(["visible-child", "unknown-child"])(
+    "rejects %s cycles back to the root",
+    async (kind) => {
+      const fake = await fakeOpenClaw(kind);
+      const staging = join(fake.root, "cycle-staging");
+      await (await import("node:fs/promises")).mkdir(staging, { mode: 0o700 });
+      await expect(
+        captureOpenClawFamily({
+          executable: fake.script,
+          openclawVersion: "test",
+          stagingRoot: staging,
+          sessionKey: "agent:main:main",
+          command: { env: { ...process.env, BUNDLE_ROOT: fake.bundles } },
+        }),
+      ).rejects.toThrow("cycle back to the root");
+    },
+  );
+
   it("captures and reconciles a stable public session family", async () => {
     const fake = await fakeOpenClaw();
     const staging = join(fake.root, "staging");
@@ -207,7 +236,7 @@ describe("captureOpenClawFamily", () => {
       command: { env: { ...process.env, BUNDLE_ROOT: fake.bundles } },
     });
     expect(result.status).toBe("complete");
-    expect(result.receipt.legacyMigration?.commands).toHaveLength(4);
+    expect(result.receipt.legacyMigration?.commands).toHaveLength(7);
   });
 
   it("rejects unsupported export without explicit migration inputs", async () => {

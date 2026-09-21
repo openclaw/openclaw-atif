@@ -1,6 +1,8 @@
 /* eslint-disable max-lines-per-function -- The mapper edge suite keeps one shared synthetic family helper. */
 import { describe, expect, it } from "vitest";
 import { mapFamilyToAtif } from "../src/atif/mapper.js";
+import { validateAtifTrajectory } from "../src/atif/schema.js";
+import { trajectoryEventSchema } from "../src/models/bundle-v1.js";
 import type { SessionFamilySnapshot } from "../src/models/family.js";
 import { event } from "./helpers.js";
 
@@ -40,6 +42,36 @@ function family(
 }
 
 describe("ATIF mapper edge cases", () => {
+  it.each([false, true])(
+    "preserves own __proto__ tool arguments with JSON text=%s",
+    async (text) => {
+      const raw = '{"__proto__":{"kept":true},"nested":{"__proto__":0}}';
+      const args: unknown = text ? raw : JSON.parse(raw);
+      const events = [
+        event({
+          seq: 1,
+          source: "transcript",
+          type: "assistant.message",
+          sessionId: "session",
+          entryId: "a",
+          data: { message: { content: "call" } },
+        }),
+        event({
+          seq: 2,
+          source: "transcript",
+          type: "tool.call",
+          sessionId: "session",
+          data: { assistantEntryId: "a", toolCallId: "call", name: "tool", arguments: args },
+        }),
+      ].map((item) => trajectoryEventSchema.parse(item));
+      const result = await mapFamilyToAtif(family(events));
+      const mapped = validateAtifTrajectory(result.trajectory).steps[0]?.tool_calls?.[0]?.arguments;
+      expect(mapped).toEqual(JSON.parse(raw));
+      expect(Object.hasOwn(mapped ?? {}, "__proto__")).toBe(true);
+      expect(Object.getPrototypeOf(mapped)).toBe(Object.prototype);
+    },
+  );
+
   it("maps runtime context and all context-management transcript events", async () => {
     const events = [
       event({

@@ -19,7 +19,8 @@ async function supportsTrajectoryExport(
       options,
     );
     return `${help.stdout}\n${help.stderr}`.includes("export-trajectory");
-  } catch {
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
     return false;
   }
 }

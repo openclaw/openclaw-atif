@@ -6,6 +6,9 @@ PYDANTIC_VERSION=2.12.5
 TEMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEMP_ROOT"' EXIT
 
+# Check discovery in the foreground: process substitution hides a failed find.
+find fixtures/golden -type f -name 'trajectory.json' -print | sort >"$TEMP_ROOT/trajectories"
+
 if [[ -n "${HARBOR_SOURCE:-}" ]]; then
   HARBOR_ROOT="$HARBOR_SOURCE"
 else
@@ -24,5 +27,5 @@ python3 -m venv "$TEMP_ROOT/venv"
 TRAJECTORIES=()
 while IFS= read -r trajectory; do
   TRAJECTORIES+=("$trajectory")
-done < <(find fixtures/golden -type f -name 'trajectory.json' -print | sort)
+done <"$TEMP_ROOT/trajectories"
 "$TEMP_ROOT/venv/bin/python" scripts/validate-harbor.py "$HARBOR_ROOT" "${TRAJECTORIES[@]}"
