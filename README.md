@@ -8,13 +8,13 @@ It uses OpenClaw's public trajectory bundles, includes linked native and ACP sub
 Install the CLI from npm:
 
 ```bash
-npm install --global openclaw-atif
+npm install --global @openclaw/openclaw-atif
 ```
 
 For library use, add it to your project:
 
 ```bash
-npm install openclaw-atif
+npm install @openclaw/openclaw-atif
 ```
 
 Node.js 24.11 or newer in the Node.js 24 release line is required.
@@ -121,7 +121,7 @@ A child session is linked to a parent tool result only when the public source co
 ## Library
 
 ```ts
-import { exportOpenClawFamily } from "openclaw-atif";
+import { exportOpenClawFamily } from "@openclaw/openclaw-atif";
 
 const result = await exportOpenClawFamily({
   executable: "openclaw",
