@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isPlainRecord } from "../json.js";
 import { OPENCLAW_BUNDLE_SCHEMA, OPENCLAW_BUNDLE_VERSION } from "../version.js";
 
 export const trajectoryEventSchema = z
@@ -20,7 +21,7 @@ export const trajectoryEventSchema = z
     modelApi: z.string().nullable().optional(),
     entryId: z.string().optional(),
     parentEntryId: z.string().nullable().optional(),
-    data: z.record(z.string(), z.unknown()).optional(),
+    data: z.custom<Record<string, unknown>>(isPlainRecord).optional(),
   })
   .loose();
 

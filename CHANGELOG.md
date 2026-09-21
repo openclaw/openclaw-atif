@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Preserve own `__proto__` JSON keys through bundle loading, tool arguments, validation, and serialization.
 - Align agent-only reasoning effort and zero-call dispatch validation with the pinned Harbor schema.
 - Preserve media references with mixed-case HTTP, HTTPS, and data URI schemes.
 - Accept contained paths whose components begin with two dots without allowing parent traversal.

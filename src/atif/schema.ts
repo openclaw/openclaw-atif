@@ -1,6 +1,6 @@
 /* eslint-disable complexity -- Recursive ATIF cross-field validation is explicit. */
 import { z } from "zod";
-import type { JsonObject, JsonValue } from "../json.js";
+import { isJsonObject, type JsonObject, type JsonValue } from "../json.js";
 import { ATIF_VERSION } from "../version.js";
 
 export type { JsonObject, JsonValue };
@@ -103,17 +103,8 @@ export interface AtifTrajectory {
   subagent_trajectories?: AtifTrajectory[];
 }
 
-const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
-  z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.null(),
-    z.array(jsonValueSchema),
-    z.record(z.string(), jsonValueSchema),
-  ]),
-);
-const jsonObjectSchema = z.record(z.string(), jsonValueSchema);
+// Zod records omit __proto__; JSON payloads must validate and retain every own key.
+const jsonObjectSchema = z.custom<JsonObject>(isJsonObject);
 export const contentPartSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string() }).strict(),
   z

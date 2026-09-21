@@ -36,6 +36,20 @@ function trajectory(): AtifTrajectory {
 }
 
 describe("ATIF schema", () => {
+  it("preserves every own JSON key and rejects invalid values under __proto__", () => {
+    const extra: unknown = JSON.parse('{"__proto__":{"nested":[1,true,null]}}');
+    const value = { ...trajectory(), extra };
+    const parsed = validateAtifTrajectory(value);
+    expect(Object.hasOwn(parsed.extra ?? {}, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(parsed.extra)).toBe(Object.prototype);
+    expect(parsed.extra).toEqual(extra);
+    for (const invalid of [undefined, Infinity, new Date(), new Map(), [undefined]]) {
+      expect(() =>
+        validateAtifTrajectory({ ...value, extra: Object.fromEntries([["__proto__", invalid]]) }),
+      ).toThrow();
+    }
+    expect(() => validateAtifTrajectory({ ...value, extra: Object.create(null) })).not.toThrow();
+  });
   it.each(["user", "system"])("rejects reasoning effort on %s steps", (source) => {
     for (const reasoning_effort of ["", 0, "high"]) {
       expect(() =>
