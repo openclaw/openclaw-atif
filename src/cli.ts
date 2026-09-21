@@ -92,8 +92,8 @@ export function parseCliArgs(args: readonly string[]): ParsedArgs {
 }
 
 function required(values: ReadonlyMap<string, string>, key: string): string {
-  const value = values.get(key)?.trim();
-  if (!value) throw new Error(`--${key} is required`);
+  const value = values.get(key);
+  if (!value?.trim()) throw new Error(`--${key} is required`);
   return value;
 }
 

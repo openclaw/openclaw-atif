@@ -1,6 +1,7 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { completedExitCode, parseCliArgs, runCli } from "../src/cli.js";
 import { childEvents, writeBundle } from "./helpers.js";
@@ -68,6 +69,58 @@ describe("CLI", () => {
     expect(completedExitCode("partial", 143)).toBe(143);
     expect(completedExitCode("complete", undefined)).toBe(0);
     expect(completedExitCode("partial", undefined)).toBe(2);
+  });
+
+  it.each([false, true])("preserves whitespace in paths with force=%s", async (force) => {
+    const root = await mkdtemp(join(tmpdir(), "openclaw-atif-cli-paths-"));
+    try {
+      await writeBundle({
+        root: join(root, " bundles "),
+        name: "bundle",
+        sessionId: "session",
+        sessionKey: "agent:main:main",
+        events: childEvents("session"),
+      });
+      await writeFile(
+        join(root, " graph.json "),
+        JSON.stringify({
+          schema: "openclaw-atif-bundle-graph-v1",
+          rootKey: "agent:main:main",
+          openclawVersion: "test",
+          nodes: [{ sessionKey: "agent:main:main", bundleDir: "bundle" }],
+        }),
+      );
+      await writeFile(join(root, "graph.json"), "trimmed graph");
+      for (const name of ["bundles", "output", ...(force ? [" output "] : [])]) {
+        await mkdir(join(root, name));
+        await writeFile(join(root, name, "sentinel"), name);
+      }
+      const result = spawnSync(
+        process.execPath,
+        [
+          resolve("dist/cli-main.js"),
+          "convert",
+          "--graph",
+          " graph.json ",
+          "--bundle-root",
+          " bundles ",
+          "--output",
+          " output ",
+          "--json",
+          ...(force ? ["--force"] : []),
+        ],
+        { cwd: root, encoding: "utf8" },
+      );
+      expect(result.status, result.stderr).toBe(0);
+      expect(await readFile(join(root, " output ", "trajectory.json"), "utf8")).toContain(
+        "ATIF-v1.8",
+      );
+      expect(await readFile(join(root, "graph.json"), "utf8")).toBe("trimmed graph");
+      for (const name of ["bundles", "output"])
+        expect(await readFile(join(root, name, "sentinel"), "utf8")).toBe(name);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it.each([
