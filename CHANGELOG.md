@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Serialize file and directory writers through a canonical destination lock, preserve recovery
+  state during contention, and prevent no-force file commits from replacing concurrent output.
 - Preserve own `__proto__` JSON keys through bundle loading, tool arguments, validation, and serialization.
 - Align agent-only reasoning effort and zero-call dispatch validation with the pinned Harbor schema.
 - Preserve media references with mixed-case HTTP, HTTPS, and data URI schemes.

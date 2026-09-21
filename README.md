@@ -54,6 +54,14 @@ media/          # retained image/audio files, when present
 
 Supported bundle-local media is copied into `media/` and referenced by relative paths. Keep this directory beside `trajectory.json`. Retention is limited to 64 files per family and 32 MiB per file. Remote references are not downloaded. Missing, unsafe, or unsupported media makes the output partial.
 
+Writers lock the canonical destination, including when reached through a parent
+directory alias or a trailing slash. A competing writer fails with the lock path
+and owner. A hard crash leaves the lock in place: verify that the named process
+has terminated, remove only that exact lock, and retry to recover the transaction.
+Locks are never stolen based on age or a PID check. Directory replacement is
+serialized between OpenClaw ATIF writers; an unrelated process creating an empty
+destination directory during the final rename remains outside that guarantee.
+
 Use `--require-complete` when partial output is not acceptable:
 
 ```bash

@@ -1,8 +1,22 @@
 /* eslint-disable complexity -- Atomic recovery requires explicit transaction-state checks. */
 import { createHash, randomUUID } from "node:crypto";
-import { access, chmod, lstat, mkdir, open, readdir, readFile, rename, rm } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import {
+  chmod,
+  type FileHandle,
+  link,
+  lstat,
+  mkdir,
+  open,
+  readdir,
+  readFile,
+  realpath,
+  rename,
+  rm,
+} from "node:fs/promises";
+import { basename, dirname, join, relative, resolve } from "node:path";
+import { asRecord } from "./json.js";
 import { compareCodeUnits } from "./ordering.js";
+import { readStableFile } from "./stable-file.js";
 
 export class OutputConflictError extends Error {
   constructor(readonly path: string) {
@@ -34,10 +48,11 @@ function throwIfAborted(signal?: AbortSignal): void {
 
 async function exists(path: string): Promise<boolean> {
   try {
-    await access(path);
+    await lstat(path);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
   }
 }
 
@@ -53,6 +68,75 @@ async function syncDirectory(path: string): Promise<void> {
 async function ensureDirectory(path: string): Promise<void> {
   const created = await mkdir(path, { recursive: true, mode: 0o700 });
   if (created) await chmod(created, 0o700);
+}
+
+async function canonicalDestination(destination: string): Promise<string> {
+  if (!destination) throw new Error("Output destination must not be empty");
+  const absolute = resolve(destination);
+  const parent = dirname(absolute);
+  if (parent === absolute) throw new Error("Output destination must not be a filesystem root");
+  await ensureDirectory(parent);
+  return join(await realpath(parent), basename(absolute));
+}
+
+async function readLock(path: string): Promise<string> {
+  return (await readStableFile(() => Promise.resolve(path), 4096)).toString("utf8");
+}
+
+async function lockConflict(path: string): Promise<Error> {
+  let owner = "unknown owner";
+  try {
+    const value = asRecord(JSON.parse(await readLock(path)) as unknown);
+    if (Number.isSafeInteger(value?.pid) && typeof value?.startedAt === "string")
+      owner = `PID ${String(value.pid)}, started ${value.startedAt}`;
+  } catch {
+    // An unreadable lock is contention, never permission to steal ownership.
+  }
+  return new Error(
+    `Output is busy (${owner}); lock: ${path}. After verifying the owner has terminated, remove this exact lock and retry recovery.`,
+  );
+}
+
+async function withOutputLock<T>(
+  destination: string,
+  action: (canonical: string) => Promise<T>,
+): Promise<T> {
+  const canonical = await canonicalDestination(destination);
+  const path = `${canonical}.openclaw-atif.lock`;
+  const record = JSON.stringify({
+    token: randomUUID(),
+    pid: process.pid,
+    startedAt: new Date(Date.now() - process.uptime() * 1000).toISOString(),
+  });
+  let handle: FileHandle;
+  try {
+    handle = await open(path, "wx", 0o600);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") throw await lockConflict(path);
+    throw error;
+  }
+  try {
+    await handle.writeFile(record);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  const outcome = await action(canonical).then(
+    (value) => ({ ok: true as const, value }),
+    (error: unknown) => ({ ok: false as const, error }),
+  );
+  try {
+    if ((await readLock(path)) !== record)
+      throw new Error(`Output lock ownership changed; preserve the lock for recovery: ${path}`);
+    await rm(path);
+    await syncDirectory(dirname(canonical));
+  } catch (error) {
+    if (!outcome.ok)
+      throw new AggregateError([outcome.error, error], "Output write and lock release failed");
+    throw error;
+  }
+  if (!outcome.ok) throw outcome.error;
+  return outcome.value;
 }
 
 async function writeFreshFile(path: string, content: OutputContent): Promise<void> {
@@ -77,8 +161,19 @@ export async function writeAtomicFile(
   signal?: AbortSignal,
 ): Promise<WriteResult> {
   throwIfAborted(signal);
+  return withOutputLock(destination, async (canonical) => ({
+    ...(await writeLockedFile(canonical, content, force, signal)),
+    path: destination,
+  }));
+}
+
+async function writeLockedFile(
+  destination: string,
+  content: string,
+  force: boolean,
+  signal?: AbortSignal,
+): Promise<WriteResult> {
   const parent = dirname(destination);
-  await ensureDirectory(parent);
   const digest = sha256(content);
   if (await exists(destination)) {
     const details = await lstat(destination);
@@ -96,7 +191,24 @@ export async function writeAtomicFile(
   try {
     await writeFreshFile(temporary, content);
     throwIfAborted(signal);
-    await rename(temporary, destination);
+    if (force) {
+      if (await exists(destination)) {
+        const details = await lstat(destination);
+        if (!details.isFile() || details.isSymbolicLink())
+          throw new OutputConflictError(destination);
+      }
+      await rename(temporary, destination);
+    } else {
+      // A hard link commits without replacing even a non-cooperating writer's file.
+      try {
+        await link(temporary, destination);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "EEXIST")
+          throw new OutputConflictError(destination);
+        throw error;
+      }
+      await rm(temporary);
+    }
     committed = true;
     await syncDirectory(parent);
     return { path: destination, sha256: digest, idempotent: false };
@@ -226,6 +338,18 @@ async function loadDirectoryTransaction(
   try {
     const parsed: unknown = JSON.parse(await readFile(path, "utf8"));
     if (isDirectoryTransaction(parsed, destination)) return parsed;
+    const record = asRecord(parsed);
+    if (record) {
+      // Older journals may name a parent alias. Resolve existing parents only;
+      // the same destination, sibling names, and transaction ID must still match.
+      const normalized = { ...record };
+      for (const key of ["destination", "backup", "stage"]) {
+        const value = record[key];
+        if (typeof value !== "string") throw new OutputConflictError(path);
+        normalized[key] = join(await realpath(dirname(value)), basename(value));
+      }
+      if (isDirectoryTransaction(normalized, destination)) return normalized;
+    }
   } catch {
     // The path is not a transaction owned by openclaw-atif.
   }
@@ -281,8 +405,21 @@ export async function writeAtomicDirectory(
 ): Promise<WriteResult[]> {
   throwIfAborted(signal);
   validateOutputNames(files);
+  return withOutputLock(destination, async (canonical) =>
+    (await writeLockedDirectory(canonical, files, force, signal)).map((write) => ({
+      ...write,
+      path: join(destination, relative(canonical, write.path)),
+    })),
+  );
+}
+
+async function writeLockedDirectory(
+  destination: string,
+  files: ReadonlyMap<string, OutputContent>,
+  force: boolean,
+  signal?: AbortSignal,
+): Promise<WriteResult[]> {
   const parent = dirname(destination);
-  await ensureDirectory(parent);
   await recoverDirectory(destination);
 
   if (await directoryMatchesHashes(destination, fileHashes(files))) {
@@ -313,6 +450,15 @@ export async function writeAtomicDirectory(
     throwIfAborted(signal);
 
     if (await exists(destination)) {
+      if (await directoryMatchesHashes(destination, fileHashes(files))) {
+        await secureExistingDirectory(destination, files);
+        return [...files].map(([name, content]) => ({
+          path: join(destination, name),
+          sha256: sha256(content),
+          idempotent: true,
+        }));
+      }
+      if (!force) throw new OutputConflictError(destination);
       transaction = await beginDirectoryTransaction(destination, stage, files);
       await rename(destination, transaction.backup);
     }
