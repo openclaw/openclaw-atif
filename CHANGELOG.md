@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.4 — 2026-09-22
+
 - Recognize valid runtime tool calls and results as retained evidence without
   duplicating transcript steps or usage. Malformed tool records and source
   truncation still produce a partial export.
