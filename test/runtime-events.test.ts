@@ -35,6 +35,16 @@ const validData = {
   matchesAssembledPrompt: true,
 };
 
+const toolIdentity = { toolCallId: "call-1", name: "exec" };
+const runtimeTools = [
+  { ...observation({ ...toolIdentity, args: { command: "printf hello" } }), type: "tool.call" },
+  {
+    ...observation({ ...toolIdentity, success: true, result: "hello" }),
+    type: "tool.result",
+    seq: 11,
+  },
+];
+
 async function fixture(events = sourceEvents) {
   const root = await mkdtemp(join(tmpdir(), "openclaw-atif-runtime-"));
   roots.push(root);
@@ -172,7 +182,7 @@ describe("runtime event preservation", () => {
     ).rejects.toThrow(/partial|complete/i);
   });
 
-  it.each(["future.event", "assistant.message", "tool.result", "session.model_change"])(
+  it.each(["future.event", "assistant.message", "session.model_change"])(
     "retains unknown runtime %s without treating it as a transcript event",
     async (type) => {
       const added = {
@@ -246,7 +256,7 @@ describe("runtime event preservation", () => {
   });
 
   it("enforces complete versus partial exit codes through the compiled CLI", async () => {
-    const f = await fixture();
+    const f = await fixture([...sourceEvents, ...runtimeTools]);
     const args = [
       join(process.cwd(), "dist/cli-main.js"),
       "convert",
@@ -281,4 +291,167 @@ describe("runtime event preservation", () => {
     expect(refused.status).toBe(1);
     await expect(readFile(join(f.output, "trajectory.json"))).rejects.toThrow();
   });
+});
+
+describe("runtime tool evidence", () => {
+  it("keeps valid tool records without duplicating transcript steps, observations or usage", async () => {
+    const transcript = [
+      ...sourceEvents,
+      event({
+        source: "transcript",
+        type: "assistant.message",
+        seq: 10,
+        sessionId: "prompt-session",
+        entryId: "tool-assistant",
+        data: {
+          message: {
+            role: "assistant",
+            content: [
+              {
+                type: "toolCall",
+                id: "call-1",
+                name: "exec",
+                arguments: { command: "printf hello" },
+              },
+            ],
+            usage: { input: 3, output: 2 },
+          },
+        },
+      }),
+      event({
+        source: "transcript",
+        type: "tool.call",
+        seq: 11,
+        sessionId: "prompt-session",
+        data: {
+          ...toolIdentity,
+          arguments: { command: "printf hello" },
+          assistantEntryId: "tool-assistant",
+          blockIndex: 0,
+        },
+      }),
+      event({
+        source: "transcript",
+        type: "tool.result",
+        seq: 12,
+        sessionId: "prompt-session",
+        entryId: "tool-result",
+        data: {
+          message: { role: "toolResult", toolCallId: "call-1", toolName: "exec", content: "hello" },
+        },
+      }),
+    ];
+    const baseline = await convertOpenClawBundles({
+      ...(await fixture(transcript)),
+      requireComplete: true,
+    });
+    const records = runtimeTools.map((item, index) => ({
+      ...item,
+      seq: transcript.length + index + 1,
+    }));
+    const f = await fixture([...transcript, ...records]);
+    const result = await convertOpenClawBundles({ ...f, requireComplete: true });
+    expect(result.status).toBe("complete");
+    expect(result.receipt.diagnostics).toEqual([]);
+    expect(result.trajectory.steps).toEqual(baseline.trajectory.steps);
+    expect(result.trajectory.steps.flatMap((step) => step.tool_calls ?? [])).toHaveLength(1);
+    expect(result.trajectory.steps.flatMap((step) => step.observation?.results ?? [])).toHaveLength(
+      1,
+    );
+    expect(result.trajectory.final_metrics).toEqual(baseline.trajectory.final_metrics);
+    expect(result.receipt.familyMetrics).toEqual(baseline.receipt.familyMetrics);
+    expect(result.trajectory.extra?.openclaw).toMatchObject({
+      runtime: {
+        event_type_counts: { "tool.call": 1, "tool.result": 1 },
+        events: expect.arrayContaining(records) as unknown,
+      },
+    });
+    const bytes = await Promise.all(
+      ["trajectory.json", "receipt.json"].map((name) => readFile(join(f.output, name))),
+    );
+    await convertOpenClawBundles({ ...f, requireComplete: true });
+    expect(
+      await Promise.all(
+        ["trajectory.json", "receipt.json"].map((name) => readFile(join(f.output, name))),
+      ),
+    ).toEqual(bytes);
+  });
+
+  it.each([undefined, null, false, 0, "", [], { content: [{ type: "text", text: "hello" }] }])(
+    "preserves opaque payloads and failed executions without inventing transcript facts: %j",
+    async (payload) => {
+      const records = runtimeTools.map((item) => ({
+        ...item,
+        data: {
+          ...toolIdentity,
+          phase: item.type === "tool.call" ? "start" : "result",
+          ...(item.type === "tool.call" ? { args: payload } : { success: false, result: payload }),
+          additionalField: { values: [false, 0, "", null] },
+        },
+      }));
+      const result = await convertOpenClawBundles({
+        ...(await fixture([...sourceEvents, ...records])),
+        requireComplete: true,
+      });
+      const baseline = await convertOpenClawBundles(await fixture());
+      expect(result.status).toBe("complete");
+      expect(result.trajectory.steps).toEqual(baseline.trajectory.steps);
+      expect(result.receipt.familyMetrics).toEqual(baseline.receipt.familyMetrics);
+      expect(result.trajectory.extra?.openclaw).toMatchObject({
+        runtime: {
+          events: expect.arrayContaining(
+            JSON.parse(JSON.stringify(records)) as unknown[],
+          ) as unknown,
+        },
+      });
+    },
+  );
+
+  it.each([
+    ["tool.call", undefined],
+    ["tool.call", {}],
+    ["tool.call", { name: "exec" }],
+    ["tool.call", { toolCallId: "call-1" }],
+    ["tool.call", { ...toolIdentity, toolCallId: "" }],
+    ["tool.call", { ...toolIdentity, toolCallId: 1 }],
+    ["tool.call", { ...toolIdentity, name: "" }],
+    ["tool.call", { ...toolIdentity, name: false }],
+    ["tool.result", undefined],
+    ["tool.result", toolIdentity],
+    ["tool.result", { ...toolIdentity, success: "true" }],
+    ["tool.result", { ...toolIdentity, toolCallId: "", success: true }],
+    ["tool.result", { ...toolIdentity, name: "", success: true }],
+  ] as const)("retains malformed %s as partial evidence: %j", async (type, data) => {
+    const added = { ...observation(data), type };
+    const f = await fixture([...sourceEvents, added]);
+    const result = await convertOpenClawBundles(f);
+    expect(result.status).toBe("partial");
+    expect(result.receipt.diagnostics.map((item) => item.code)).toEqual(["invalid-runtime-event"]);
+    expect(result.trajectory.extra?.openclaw).toMatchObject({
+      runtime: { events: expect.arrayContaining([added]) as unknown },
+    });
+    await expect(
+      convertOpenClawBundles({ ...f, output: join(f.root, "strict"), requireComplete: true }),
+    ).rejects.toThrow(/partial|complete/i);
+  });
+
+  it.each([true, 1, ["args"], 2])(
+    "keeps source truncation diagnostics for supported tool events: %j",
+    async (marker) => {
+      const records = runtimeTools.map((item) => ({
+        ...item,
+        data: {
+          ...item.data,
+          ...(typeof marker === "boolean" || marker === 1
+            ? { truncated: marker }
+            : { droppedFields: marker }),
+        },
+      }));
+      const result = await convertOpenClawBundles(await fixture([...sourceEvents, ...records]));
+      expect(result.status).toBe("partial");
+      expect(result.receipt.diagnostics.map((item) => item.code)).toEqual([
+        "source-event-truncated",
+      ]);
+    },
+  );
 });

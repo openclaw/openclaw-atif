@@ -92,7 +92,7 @@ function hasFailureMarker(value: unknown): boolean {
 export function extractSpawnEvidence(events: readonly TrajectoryEvent[]): SpawnEvidence[] {
   const calls = new Map<string, { name: string; runtime?: string; visible?: boolean }>();
   for (const event of events) {
-    if (event.type === "tool.call") {
+    if (event.source === "transcript" && event.type === "tool.call") {
       const id = readNonBlankString(event.data?.toolCallId);
       const name = readNonBlankString(event.data?.name);
       const argumentsRecord = asRecord(parseExactJsonText(event.data?.arguments));
@@ -110,7 +110,7 @@ export function extractSpawnEvidence(events: readonly TrajectoryEvent[]): SpawnE
   }
   const evidence: SpawnEvidence[] = [];
   for (const event of events) {
-    if (event.type !== "tool.result") continue;
+    if (event.source !== "transcript" || event.type !== "tool.result") continue;
     const message = asRecord(event.data?.message);
     if (!message) continue;
     const callId =

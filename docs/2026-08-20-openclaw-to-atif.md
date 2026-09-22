@@ -49,11 +49,13 @@ One runtime-event policy controls both completeness checks and mapping. `context
 
 Other runtime events remain ordered public event records in `extra.openclaw.runtime.events`. This replaces the narrower `terminal_events` field in place. Preserve the full public envelope and payload, including supplied sequence, timestamp, run ID, provider, model, and additional fields. Do not invent missing identity fields or attach events to nearby messages. Each child trajectory retains its own events. `event_type_counts` counts all runtime events, including those mapped to context steps.
 
-Recognized metadata events are `session.started`, `trace.metadata`, `prompt.submitted`, `provider.prompt.observed`, `model.completed`, `trace.artifacts`, and `session.ended`. Unknown events are retained in the same list but still produce `unsupported-runtime-event` and a partial export. An unknown runtime event cannot become a transcript step merely because its type matches a transcript event name.
+Recognized metadata events are `session.started`, `trace.metadata`, `prompt.submitted`, `provider.prompt.observed`, `tool.call`, `tool.result`, `model.completed`, `trace.artifacts`, and `session.ended`. Unknown events are retained in the same list but still produce `unsupported-runtime-event` and a partial export. An unknown runtime event cannot become a transcript step merely because its type matches a transcript event name.
+
+Runtime `tool.call` and `tool.result` records require nonempty `toolCallId` and `name` strings; results also require a boolean `success`. Arguments (`args`), result payloads (`result`), and additional public fields remain unchanged and may be absent. These runtime records are execution evidence, not transcript messages: they do not create tool calls, observations, or usage, even when no matching transcript record exists. A failed execution (`success: false`) is valid evidence. Malformed records produce `invalid-runtime-event`; truncation and dropped-field markers still make the export partial.
 
 `provider.prompt.observed` records transport and payload labels, prompt placement, expected and observed character counts, and `matchesAssembledPrompt`. Validate these fields against the OpenClaw 2026.9.3 observation contract while preserving additional public fields. Malformed observations produce `invalid-runtime-event` and remain in the partial output. A valid observation with `matchesAssembledPrompt: false` or `promptSource: "missing"` is retained source evidence, not an export failure. Source truncation and dropped-field markers still make the export partial.
 
-Metadata events do not create messages, steps, retries, or usage metrics. Runtime and transcript copies of the same dialogue are not emitted twice.
+Metadata events do not create messages, steps, retries, usage metrics, or spawn-lineage evidence. Runtime and transcript copies of the same dialogue are not emitted twice. Spawn calls and results are matched only within the transcript source, so runtime copies cannot overwrite transcript spawn arguments.
 
 ## Session events
 
