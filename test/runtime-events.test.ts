@@ -363,7 +363,7 @@ describe("runtime tool evidence", () => {
     expect(result.trajectory.extra?.openclaw).toMatchObject({
       runtime: {
         event_type_counts: { "tool.call": 1, "tool.result": 1 },
-        events: expect.arrayContaining(records),
+        events: expect.arrayContaining(records) as unknown,
       },
     });
     const bytes = await Promise.all(
@@ -399,7 +399,9 @@ describe("runtime tool evidence", () => {
       expect(result.receipt.familyMetrics).toEqual(baseline.receipt.familyMetrics);
       expect(result.trajectory.extra?.openclaw).toMatchObject({
         runtime: {
-          events: expect.arrayContaining(JSON.parse(JSON.stringify(records)) as unknown[]),
+          events: expect.arrayContaining(
+            JSON.parse(JSON.stringify(records)) as unknown[],
+          ) as unknown,
         },
       });
     },
@@ -426,7 +428,7 @@ describe("runtime tool evidence", () => {
     expect(result.status).toBe("partial");
     expect(result.receipt.diagnostics.map((item) => item.code)).toEqual(["invalid-runtime-event"]);
     expect(result.trajectory.extra?.openclaw).toMatchObject({
-      runtime: { events: expect.arrayContaining([added]) },
+      runtime: { events: expect.arrayContaining([added]) as unknown },
     });
     await expect(
       convertOpenClawBundles({ ...f, output: join(f.root, "strict"), requireComplete: true }),
