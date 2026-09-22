@@ -1,4 +1,144 @@
 {
+  "accounting": {
+    "costProvenance": "runtime-reported-unreconciled",
+    "family": {
+      "components": {
+        "cacheRead": {
+          "observed": 1,
+          "total": 2
+        },
+        "cacheWrite": {
+          "observed": 0,
+          "total": null
+        },
+        "costUsd": {
+          "observed": 2,
+          "total": 0.012
+        },
+        "input": {
+          "observed": 2,
+          "total": 13
+        },
+        "output": {
+          "observed": 2,
+          "total": 5
+        }
+      },
+      "messages": 2
+    },
+    "nodes": [
+      {
+        "components": {
+          "cacheRead": {
+            "observed": 1,
+            "total": 2
+          },
+          "cacheWrite": {
+            "observed": 0,
+            "total": null
+          },
+          "costUsd": {
+            "observed": 1,
+            "total": 0.01
+          },
+          "input": {
+            "observed": 1,
+            "total": 10
+          },
+          "output": {
+            "observed": 1,
+            "total": 4
+          }
+        },
+        "messages": 1,
+        "models": [
+          {
+            "components": {
+              "cacheRead": {
+                "observed": 1,
+                "total": 2
+              },
+              "cacheWrite": {
+                "observed": 0,
+                "total": null
+              },
+              "costUsd": {
+                "observed": 1,
+                "total": 0.01
+              },
+              "input": {
+                "observed": 1,
+                "total": 10
+              },
+              "output": {
+                "observed": 1,
+                "total": 4
+              }
+            },
+            "messages": 1,
+            "model": "openai/gpt-test"
+          }
+        ],
+        "sessionKey": "agent:main:main"
+      },
+      {
+        "components": {
+          "cacheRead": {
+            "observed": 0,
+            "total": null
+          },
+          "cacheWrite": {
+            "observed": 0,
+            "total": null
+          },
+          "costUsd": {
+            "observed": 1,
+            "total": 0.002
+          },
+          "input": {
+            "observed": 1,
+            "total": 3
+          },
+          "output": {
+            "observed": 1,
+            "total": 1
+          }
+        },
+        "messages": 1,
+        "models": [
+          {
+            "components": {
+              "cacheRead": {
+                "observed": 0,
+                "total": null
+              },
+              "cacheWrite": {
+                "observed": 0,
+                "total": null
+              },
+              "costUsd": {
+                "observed": 1,
+                "total": 0.002
+              },
+              "input": {
+                "observed": 1,
+                "total": 3
+              },
+              "output": {
+                "observed": 1,
+                "total": 1
+              }
+            },
+            "messages": 1,
+            "model": "openai/gpt-test"
+          }
+        ],
+        "sessionKey": "agent:main:subagent:child"
+      }
+    ],
+    "providerRequests": "not-established",
+    "scope": "observed-assistant-messages"
+  },
   "diagnostics": [],
   "familyMetrics": {
     "cachedTokens": 2,

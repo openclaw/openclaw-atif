@@ -1,9 +1,9 @@
-import { chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { captureOpenClawFamily } from "../src/capture/family.js";
-import { exportOpenClawFamily } from "../src/exporter.js";
+import { convertOpenClawBundles, exportOpenClawFamily } from "../src/exporter.js";
 import { childEvents, rootEvents, writeBundle } from "./helpers.js";
 
 async function fakeOpenClaw(rootParentKind?: string) {
@@ -85,6 +85,55 @@ process.exit(2);
 }
 
 describe("captureOpenClawFamily", () => {
+  it.each([false, true])(
+    "replays relocated retained bundles without upgrading partial capture (%s)",
+    async (partial) => {
+      const fake = await fakeOpenClaw();
+      const original = await exportOpenClawFamily({
+        executable: fake.script,
+        sessionKey: "agent:main:main",
+        output: join(fake.root, "original"),
+        keepSourceBundles: true,
+        retries: 1,
+        command: {
+          env: {
+            ...process.env,
+            ...(partial
+              ? { FAIL_CHILD_COUNTER: join(fake.root, "attempts"), FAIL_CHILD_ALWAYS: "1" }
+              : {}),
+          },
+        },
+      });
+      expect(original.sourceBundleRoot).toBeTruthy();
+      const retained = original.sourceBundleRoot;
+      if (!retained) throw new Error("Missing retained source bundles");
+      expect((await stat(join(retained, "graph.json"))).mode & 0o777).toBe(0o600);
+      const moved = join(fake.root, "relocated");
+      await cp(retained, moved, { recursive: true });
+      const replay = await convertOpenClawBundles({
+        graph: join(moved, "graph.json"),
+        bundleRoot: moved,
+        output: join(fake.root, "replay"),
+      });
+      expect(replay.trajectory).toEqual(original.trajectory);
+      expect(replay.receipt).toEqual(original.receipt);
+      expect(replay.status).toBe(partial ? "partial" : "complete");
+      const graph = JSON.parse(await readFile(join(moved, "graph.json"), "utf8")) as {
+        nodes: { bundleDir: string }[];
+      };
+      const bundle = graph.nodes[0];
+      if (!bundle) throw new Error("missing fixture bundle");
+      const path = join(moved, bundle.bundleDir, "session-branch.json");
+      await writeFile(path, `${await readFile(path, "utf8")}\n`);
+      await expect(
+        convertOpenClawBundles({
+          graph: join(moved, "graph.json"),
+          bundleRoot: moved,
+          output: join(fake.root, "tampered"),
+        }),
+      ).rejects.toThrow("hash mismatch");
+    },
+  );
   it.each(["visible-child", "unknown-child"])(
     "rejects %s cycles back to the root",
     async (kind) => {
