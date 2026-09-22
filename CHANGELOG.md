@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.3 — 2026-09-22
+
 - Add receipt accounting coverage by node, model, and observed assistant message,
   preserving missing values versus zero independently of capture completeness.
 - Retain a relocatable, checksum-verified conversion graph with public source
