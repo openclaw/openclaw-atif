@@ -29,12 +29,19 @@ const promptObservationSchema = z
   })
   .loose();
 
+// Runtime tool records are execution evidence, not transcript messages. Payloads
+// may be omitted or have any public JSON shape; preserve them without coercion.
+const toolCallSchema = z.object({ toolCallId: z.string().min(1), name: z.string().min(1) }).loose();
+const toolResultSchema = toolCallSchema.extend({ success: z.boolean() });
+
 const runtimeEventRules = new Map<string, RuntimeEventRule>([
   ["session.started", { kind: "metadata" }],
   ["trace.metadata", { kind: "metadata" }],
   ["context.compiled", { kind: "context" }],
   ["prompt.submitted", { kind: "metadata" }],
   ["provider.prompt.observed", { kind: "metadata", data: promptObservationSchema }],
+  ["tool.call", { kind: "metadata", data: toolCallSchema }],
+  ["tool.result", { kind: "metadata", data: toolResultSchema }],
   ["model.fallback_step", { kind: "context" }],
   ["model.completed", { kind: "metadata" }],
   ["trace.artifacts", { kind: "metadata" }],

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recognize valid runtime tool calls and results as retained evidence without
+  duplicating transcript steps or usage. Malformed tool records and source
+  truncation still produce a partial export.
+- Keep runtime tool records out of transcript spawn-lineage extraction so they
+  cannot overwrite child visibility/runtime metadata or create phantom children.
+
 ## 0.1.3 — 2026-09-22
 
 - Add receipt accounting coverage by node, model, and observed assistant message,

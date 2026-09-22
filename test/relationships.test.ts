@@ -66,6 +66,48 @@ describe("relationship discovery", () => {
     expect(relationships[0]?.kind).toBe("acp-child");
   });
 
+  it.each([
+    [{ visible: true }, "visible-child"],
+    [{ runtime: "acp" }, "acp-child"],
+  ] as const)("preserves transcript spawn mode beside runtime copies: %j", (args, kind) => {
+    const parent = { key: "agent:main:main", sessionId: "root" };
+    const child = { key: "opaque-child", sessionId: "child", parentSessionKey: parent.key };
+    const transcript = rootEvents("root", child.key).map((item) =>
+      item.type === "tool.call" ? { ...item, data: { ...item.data, arguments: args } } : item,
+    );
+    const runtime = event({
+      source: "runtime",
+      type: "tool.call",
+      seq: 20,
+      sessionId: "root",
+      data: { toolCallId: "call-1", name: "sessions_spawn", args },
+    });
+    const events = [...transcript, runtime];
+    expect(extractSpawnEvidence(events)).toEqual(extractSpawnEvidence(transcript));
+    expect(discoverRelationships({ parent, rows: [parent, child], events })[0]?.kind).toBe(kind);
+  });
+
+  it.each(["tool.call", "tool.result", "both"])(
+    "does not infer lineage when %s is runtime evidence rather than transcript",
+    (type) => {
+      const events = rootEvents("root", "agent:main:subagent:phantom").map((item) =>
+        (type === "both" && item.type.startsWith("tool.")) || item.type === type
+          ? {
+              ...item,
+              source: "runtime" as const,
+              data: {
+                ...item.data,
+                toolCallId: "call-1",
+                name: "sessions_spawn",
+                success: false,
+              },
+            }
+          : item,
+      );
+      expect(extractSpawnEvidence(events)).toEqual([]);
+    },
+  );
+
   it("does not create lineage from a failed structured spawn result", () => {
     const events = rootEvents("root", "agent:main:subagent:failed").map((item) =>
       item.type === "tool.result"
