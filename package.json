@@ -78,7 +78,7 @@
     "slophammer-ts": "0.5.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.0",
-    "vitest": "4.1.11"
+    "vitest": "5.0.3"
   },
   "overrides": {
     "fast-uri": "3.1.8",
