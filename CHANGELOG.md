@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refresh Biome, ESLint, typescript-eslint, and Node.js 24 declarations while preserving the compatible Vitest 4 and TypeScript 6 toolchain. Thanks @dependabot.
+
 - Canonicalize retained source staging so exports and replay work through temporary-directory aliases, including macOS temporary paths. Thanks @SebTardif.
 
 - Use one shared autoreview installation from `openclaw/agent-skills`; repository entrypoints now receive upstream fixes without copied helpers or test suites.
