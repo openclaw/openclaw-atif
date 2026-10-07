@@ -65,7 +65,8 @@ reported and billing-unreconciled. Capture `complete` does not certify accountin
 coverage, execution success, or task reward.
 
 `export --keep-source-bundles` retains a private source directory and returns its
-path as `sourceBundleRoot`. It now includes `graph.json`, public bundle hashes,
+canonical path as `sourceBundleRoot`, including when the temporary directory is
+reached through a filesystem alias. It now includes `graph.json`, public bundle hashes,
 listing evidence, capture diagnostics, and stability. Copy the entire directory
 to the chosen private archive before deleting the environment. Replay it with:
 
