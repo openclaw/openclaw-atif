@@ -1,5 +1,5 @@
 /* eslint-disable complexity -- Export and cleanup states must remain explicit. */
-import { chmod, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mapFamilyToAtif } from "./atif/mapper.js";
@@ -96,7 +96,7 @@ async function commitExport(params: {
 }
 
 export async function exportOpenClawFamily(options: ExportOptions): Promise<ExportResult> {
-  const stagingRoot = await mkdtemp(join(tmpdir(), ".openclaw-atif-"));
+  const stagingRoot = await realpath(await mkdtemp(join(tmpdir(), ".openclaw-atif-")));
   await chmod(stagingRoot, 0o700);
   let result: ExportResult | undefined;
   let primaryError: unknown;
