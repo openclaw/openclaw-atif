@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Refresh Biome, ESLint, typescript-eslint, and the paired Vitest test/coverage tools while keeping Node.js 24 declarations and TypeScript 6. Thanks @dependabot.
+- Refresh Biome, ESLint, typescript-eslint, and Node.js 24 declarations while preserving the compatible Vitest 4 and TypeScript 6 toolchain. Thanks @dependabot.
 
 - Use one shared autoreview installation from `openclaw/agent-skills`; repository entrypoints now receive upstream fixes without copied helpers or test suites.
 
