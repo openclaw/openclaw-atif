@@ -11,6 +11,8 @@
 - Refresh ESLint, typescript-eslint, and Node.js 24 declarations while retaining compatible TypeScript and Vitest tooling. Thanks @dependabot.
 - Update fast-uri and brace-expansion to patched releases, clearing development dependency security advisories.
 
+- Update setup-node to 7.1.0 in CI and publishing validation while retaining Node.js 24 and the existing publish trigger. Thanks @dependabot.
+
 ## 0.1.4 — 2026-09-22
 
 - Recognize valid runtime tool calls and results as retained evidence without
