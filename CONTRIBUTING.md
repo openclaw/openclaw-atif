@@ -42,10 +42,11 @@ and push to `main`.
 - Use synthetic fixtures. Redact credentials, session content, personal paths, and private hostnames.
 - Report fixture, installed-CLI, real OpenClaw, and live-model proof separately.
 
-When independent review is requested, use the vendored canonical helper:
+Follow [the shared skill setup](.agents/skills/autoreview/SKILL.md) once.
+When independent review is requested, use the shared canonical helper:
 
 ```bash
-.agents/skills/autoreview/scripts/autoreview --mode local --max-priority P2
+python3 "$HOME/.agents/skills/autoreview/scripts/autoreview" --mode local --max-priority P2
 ```
 
 For committed changes, use `--mode branch --base <base-sha>` instead. Verify

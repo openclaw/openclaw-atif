@@ -3,8 +3,16 @@
 ## Unreleased
 
 - Recognize historical native Codex tool outcomes, retained running processes, and terminal-tool release metadata without changing their source fields or marking valid exports partial.
+- Refresh Biome, ESLint, typescript-eslint, and Node.js 24 declarations while preserving the compatible Vitest 4 and TypeScript 6 toolchain. Thanks @dependabot.
+
+- Canonicalize retained source staging so exports and replay work through temporary-directory aliases, including macOS temporary paths. Thanks @SebTardif.
+
+- Use one shared autoreview installation from `openclaw/agent-skills`; repository entrypoints now receive upstream fixes without copied helpers or test suites.
+
 - Refresh ESLint, typescript-eslint, and Node.js 24 declarations while retaining compatible TypeScript and Vitest tooling. Thanks @dependabot.
 - Update fast-uri and brace-expansion to patched releases, clearing development dependency security advisories.
+
+- Update setup-node to 7.1.0 in CI and publishing validation while retaining Node.js 24 and the existing publish trigger. Thanks @dependabot.
 
 ## 0.1.4 — 2026-09-22
 

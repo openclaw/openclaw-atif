@@ -1,7 +1,19 @@
-import { chmod, cp, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { captureOpenClawFamily } from "../src/capture/family.js";
 import { convertOpenClawBundles, exportOpenClawFamily } from "../src/exporter.js";
 import { childEvents, rootEvents, writeBundle } from "./helpers.js";
@@ -83,6 +95,53 @@ process.exit(2);
   await chmod(script, 0o700);
   return { root, bundles, script };
 }
+
+describe("export temporary-directory aliases", () => {
+  it("retains replayable bundles and cleans failed exports through a temporary-directory alias", async () => {
+    const fake = await fakeOpenClaw();
+    const temporary = join(fake.root, "temporary");
+    const alias = join(fake.root, "alias");
+    try {
+      await mkdir(temporary);
+      await symlink(temporary, alias);
+      vi.stubEnv("TMPDIR", alias);
+      vi.stubEnv("TEMP", alias);
+      vi.stubEnv("TMP", alias);
+      const original = await exportOpenClawFamily({
+        executable: fake.script,
+        sessionKey: "agent:main:main",
+        output: join(fake.root, "original"),
+        keepSourceBundles: true,
+        retries: 1,
+      });
+      const retained = original.sourceBundleRoot;
+      if (!retained) throw new Error("Missing retained source bundles");
+      expect(retained).toBe(await realpath(retained));
+      expect((await stat(retained)).mode & 0o777).toBe(0o700);
+      const replay = await convertOpenClawBundles({
+        graph: join(retained, "graph.json"),
+        bundleRoot: retained,
+        output: join(fake.root, "replay"),
+      });
+      expect(replay.trajectory).toEqual(original.trajectory);
+      expect(replay.receipt).toEqual(original.receipt);
+      const beforeFailure = await readdir(temporary);
+      expect(beforeFailure).toHaveLength(1);
+      await expect(
+        exportOpenClawFamily({
+          executable: join(fake.root, "missing-openclaw"),
+          sessionKey: "agent:main:main",
+          output: join(fake.root, "failed"),
+          keepSourceBundles: true,
+        }),
+      ).rejects.toThrow();
+      expect(await readdir(temporary)).toEqual(beforeFailure);
+    } finally {
+      vi.unstubAllEnvs();
+      await rm(fake.root, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("captureOpenClawFamily", () => {
   it.each([false, true])(
