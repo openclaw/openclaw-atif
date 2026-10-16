@@ -294,6 +294,64 @@ describe("runtime event preservation", () => {
 });
 
 describe("runtime tool evidence", () => {
+  it("retains native outcomes and terminal release without inventing completed work", async () => {
+    const outcomes = [
+      { success: true, result: "embedded result" },
+      { success: false, result: "embedded error" },
+      { success: true, contentItems: [{ type: "inputText", text: "dynamic result" }] },
+      { success: false, contentItems: [{ type: "inputText", text: "dynamic error" }] },
+      { status: "completed", isError: false, output: "native result" },
+      { status: "failed", isError: true, output: "native error" },
+      { status: "blocked", isError: true, output: "native approval declined" },
+      { status: "completed", isError: false, success: true },
+      { status: "failed", isError: true, success: false },
+      { status: "blocked", isError: true, success: false },
+      { status: "running", isError: false, result: { status: "running", processId: "proc-1" } },
+      { status: "running", result: { status: "running", processId: "proc-2" } },
+      { status: "unknown", isError: false },
+      { status: "unknown" },
+      {
+        status: "failed",
+        isError: true,
+        result: { status: "failed", reason: "missing_tool_result" },
+      },
+    ];
+    const records = outcomes.map((data, index) => ({
+      ...observation({ ...toolIdentity, ...data, toolCallId: `call-${String(index + 1)}` }),
+      type: "tool.result",
+      seq: sourceEvents.length + index + 1,
+    }));
+    records.push({
+      ...observation({
+        ...toolIdentity,
+        threadId: "thread-1",
+        turnId: "turn-1",
+        durationMs: 12,
+      }),
+      type: "turn.dynamic_tool_terminal_release",
+      seq: sourceEvents.length + records.length + 1,
+    });
+    const baseline = await convertOpenClawBundles(await fixture());
+    const result = await convertOpenClawBundles({
+      ...(await fixture([...sourceEvents, ...records])),
+      requireComplete: true,
+    });
+    expect(result.status).toBe("complete");
+    expect(result.receipt.diagnostics).toEqual([]);
+    expect(result.trajectory.steps).toEqual(baseline.trajectory.steps);
+    expect(result.receipt.familyMetrics).toEqual(baseline.receipt.familyMetrics);
+    expect(result.trajectory.extra?.openclaw).toMatchObject({
+      runtime: {
+        events: [
+          ...sourceEvents.filter(
+            (item) => item.source === "runtime" && item.type !== "context.compiled",
+          ),
+          ...records,
+        ],
+      },
+    });
+  });
+
   it("keeps valid tool records without duplicating transcript steps, observations or usage", async () => {
     const transcript = [
       ...sourceEvents,
@@ -421,14 +479,37 @@ describe("runtime tool evidence", () => {
     ["tool.result", { ...toolIdentity, success: "true" }],
     ["tool.result", { ...toolIdentity, toolCallId: "", success: true }],
     ["tool.result", { ...toolIdentity, name: "", success: true }],
+    ["tool.result", { ...toolIdentity, status: "completed" }],
+    ["tool.result", { ...toolIdentity, status: "future-status", isError: false }],
+    ["tool.result", { ...toolIdentity, status: "completed", success: true }],
+    ["tool.result", { ...toolIdentity, status: "failed", success: false }],
+    ["tool.result", { ...toolIdentity, status: "completed", isError: true }],
+    ["tool.result", { ...toolIdentity, status: "failed", isError: false }],
+    ["tool.result", { ...toolIdentity, status: "blocked", success: true }],
+    ["tool.result", { ...toolIdentity, success: true, isError: true }],
+    ["tool.result", { ...toolIdentity, status: "running", success: true }],
+    ["tool.result", { ...toolIdentity, status: "running", success: false }],
+    ["tool.result", { ...toolIdentity, status: "running", isError: true }],
+    ["tool.result", { ...toolIdentity, status: "unknown", success: true }],
+    ["tool.result", { ...toolIdentity, status: "unknown", success: false }],
+    ["tool.result", { ...toolIdentity, status: "unknown", isError: true }],
+    ["turn.dynamic_tool_terminal_release", { ...toolIdentity, durationMs: 1 }],
+    [
+      "turn.dynamic_tool_terminal_release",
+      { ...toolIdentity, threadId: "thread-1", turnId: "turn-1", durationMs: -1 },
+    ],
   ] as const)("retains malformed %s as partial evidence: %j", async (type, data) => {
-    const added = { ...observation(data), type };
-    const f = await fixture([...sourceEvents, added]);
+    const added = {
+      ...observation(data),
+      type,
+      seq: sourceEvents.length + runtimeTools.length + 1,
+    };
+    const f = await fixture([...sourceEvents, ...runtimeTools, added]);
     const result = await convertOpenClawBundles(f);
     expect(result.status).toBe("partial");
     expect(result.receipt.diagnostics.map((item) => item.code)).toEqual(["invalid-runtime-event"]);
     expect(result.trajectory.extra?.openclaw).toMatchObject({
-      runtime: { events: expect.arrayContaining([added]) as unknown },
+      runtime: { events: expect.arrayContaining([...runtimeTools, added]) as unknown },
     });
     await expect(
       convertOpenClawBundles({ ...f, output: join(f.root, "strict"), requireComplete: true }),

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Recognize historical native Codex tool outcomes, retained running processes, and terminal-tool release metadata without changing their source fields or marking valid exports partial.
 - Refresh ESLint, typescript-eslint, and Node.js 24 declarations while retaining compatible TypeScript and Vitest tooling. Thanks @dependabot.
 - Update fast-uri and brace-expansion to patched releases, clearing development dependency security advisories.
 

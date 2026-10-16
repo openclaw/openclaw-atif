@@ -32,7 +32,29 @@ const promptObservationSchema = z
 // Runtime tool records are execution evidence, not transcript messages. Payloads
 // may be omitted or have any public JSON shape; preserve them without coercion.
 const toolCallSchema = z.object({ toolCallId: z.string().min(1), name: z.string().min(1) }).loose();
-const toolResultSchema = toolCallSchema.extend({ success: z.boolean() });
+const toolResultSchema = toolCallSchema
+  .extend({
+    success: z.boolean().optional(),
+    status: z.enum(["completed", "failed", "blocked", "running", "unknown"]).optional(),
+    isError: z.boolean().optional(),
+  })
+  .refine(({ success, status, isError }) => {
+    // Native Codex exports before success was unified carry status/isError.
+    // A retained process or unknown outcome does not prove success or failure.
+    if (status === "running" || status === "unknown")
+      return success === undefined && isError !== true;
+    if (status !== undefined)
+      return (
+        isError === (status !== "completed") &&
+        (success === undefined || success === (status === "completed"))
+      );
+    return success !== undefined && isError !== success;
+  });
+const terminalToolReleaseSchema = toolCallSchema.extend({
+  threadId: z.string().min(1),
+  turnId: z.string().min(1),
+  durationMs: z.number().nonnegative(),
+});
 
 const runtimeEventRules = new Map<string, RuntimeEventRule>([
   ["session.started", { kind: "metadata" }],
@@ -42,6 +64,7 @@ const runtimeEventRules = new Map<string, RuntimeEventRule>([
   ["provider.prompt.observed", { kind: "metadata", data: promptObservationSchema }],
   ["tool.call", { kind: "metadata", data: toolCallSchema }],
   ["tool.result", { kind: "metadata", data: toolResultSchema }],
+  ["turn.dynamic_tool_terminal_release", { kind: "metadata", data: terminalToolReleaseSchema }],
   ["model.fallback_step", { kind: "context" }],
   ["model.completed", { kind: "metadata" }],
   ["trace.artifacts", { kind: "metadata" }],
