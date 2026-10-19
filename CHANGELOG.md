@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refresh Zod to 4.6.7, retaining the existing public validation schemas. Thanks @dependabot.
+
 - Recognize historical native Codex tool outcomes, retained running processes, and terminal-tool release metadata without changing their source fields or marking valid exports partial.
 - Refresh Biome, ESLint, typescript-eslint, and Node.js 24 declarations while preserving the compatible Vitest 4 and TypeScript 6 toolchain. Thanks @dependabot.
 
