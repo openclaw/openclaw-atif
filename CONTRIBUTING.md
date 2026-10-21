@@ -62,7 +62,8 @@ publishing the GitHub Release. Never move an existing release tag.
 
 Before tagging, dispatch `publish.yml` on that exact `main` commit with `version`
 set to the package version and `dry_run: true`, and require a green result. This
-runs every release gate and smoke-installs the packed tarball without publishing.
+runs every release gate, smoke-installs the packed tarball, and previews its
+contents without publishing. It also supports already-published package versions.
 Manual dispatch rejects `dry_run: false`; only a published GitHub Release can
 publish to npm. Registry verification allows up to ten minutes for npm metadata
 and provenance to propagate, requesting fresh metadata on each attempt.
