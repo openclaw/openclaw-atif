@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add a manual release dry run and tolerate npm registry propagation delays when verifying published packages.
+- Add a manual release dry run that also supports already-published versions and tolerate npm registry propagation delays when verifying published packages.
 
 - Update Vitest and V8 coverage together to 4.1.12, ESLint to 10.13.0, typescript-eslint to 8.72.0, and Node.js 24 declarations; defer Vitest 5 while it fails the Stryker mutation gate. Thanks @dependabot.
 
