@@ -2,22 +2,21 @@
 
 ## Unreleased
 
-- Add a manual release dry run that also supports already-published versions and tolerate npm registry propagation delays when verifying published packages.
+## 0.1.5 — 2026-10-20
 
-- Update Vitest and V8 coverage together to 4.1.12, ESLint to 10.13.0, typescript-eslint to 8.72.0, and Node.js 24 declarations; defer Vitest 5 while it fails the Stryker mutation gate. Thanks @dependabot.
+**Highlights:** More reliable native Codex exports and retained-bundle replay, patched development dependencies, and safer release verification.
 
-- Refresh Zod to 4.6.7, retaining the existing public validation schemas. Thanks @dependabot.
+[npm 0.1.5](https://www.npmjs.com/package/@openclaw/openclaw-atif/v/0.1.5) · [tarball](https://registry.npmjs.org/@openclaw/openclaw-atif/-/openclaw-atif-0.1.5.tgz) · [integrity metadata](https://registry.npmjs.org/@openclaw%2Fopenclaw-atif/0.1.5) · [CI](https://github.com/openclaw/openclaw-atif/actions/workflows/ci.yml)
 
 - Recognize historical native Codex tool outcomes, retained running processes, and terminal-tool release metadata without changing their source fields or marking valid exports partial.
-- Refresh Biome, ESLint, typescript-eslint, and Node.js 24 declarations while preserving the compatible Vitest 4 and TypeScript 6 toolchain. Thanks @dependabot.
-
 - Canonicalize retained source staging so exports and replay work through temporary-directory aliases, including macOS temporary paths. Thanks @SebTardif.
-
-- Use one shared autoreview installation from `openclaw/agent-skills`; repository entrypoints now receive upstream fixes without copied helpers or test suites.
-
-- Refresh ESLint, typescript-eslint, and Node.js 24 declarations while retaining compatible TypeScript and Vitest tooling. Thanks @dependabot.
 - Update fast-uri and brace-expansion to patched releases, clearing development dependency security advisories.
-
+- Add a manual release dry run that also supports already-published versions and tolerate npm registry propagation delays when verifying published packages.
+- Update Vitest and V8 coverage together to 4.1.12, ESLint to 10.13.0, typescript-eslint to 8.72.0, and Node.js 24 declarations; defer Vitest 5 while it fails the Stryker mutation gate. Thanks @dependabot.
+- Refresh Zod to 4.6.7, retaining the existing public validation schemas. Thanks @dependabot.
+- Refresh Biome, ESLint, typescript-eslint, and Node.js 24 declarations while preserving the compatible Vitest 4 and TypeScript 6 toolchain. Thanks @dependabot.
+- Use one shared autoreview installation from `openclaw/agent-skills`; repository entrypoints now receive upstream fixes without copied helpers or test suites.
+- Refresh ESLint, typescript-eslint, and Node.js 24 declarations while retaining compatible TypeScript and Vitest tooling. Thanks @dependabot.
 - Update setup-node to 7.1.0 in CI and publishing validation while retaining Node.js 24 and the existing publish trigger. Thanks @dependabot.
 
 ## 0.1.4 — 2026-09-22
