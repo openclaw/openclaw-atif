@@ -1,6 +1,17 @@
 name: Publish
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version to validate at the selected ref
+        required: true
+        type: string
+      dry_run:
+        description: Validate only; manual dispatch cannot publish
+        required: true
+        default: true
+        type: boolean
   release:
     types: [published]
 
@@ -23,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || github.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -38,9 +49,15 @@ jobs:
       - name: Verify release
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || format('v{0}', inputs.version) }}
+          EVENT_NAME: ${{ github.event_name }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$DRY_RUN" != "true" ]]; then
+            echo "Manual dispatch only supports dry_run: true" >&2
+            exit 1
+          fi
           PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
 
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ || "$RELEASE_TAG" != "v$PACKAGE_VERSION" ]]; then
@@ -66,17 +83,18 @@ jobs:
       - name: Verify real migration preserves original state
         run: node scripts/smoke-migration.mjs "$RUNNER_TEMP/migration-openclaw"
       - name: Check registry artifact
+        if: github.event_name == 'release'
         id: registry
         run: |
           set -euo pipefail
           PACKAGE_NAME="$(node -p 'require("./package.json").name')"
           PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
           PACKAGE_SPEC="$PACKAGE_NAME@$PACKAGE_VERSION"
-          if npm view "$PACKAGE_SPEC" --json >"$RUNNER_TEMP/npm-package.json" 2>"$RUNNER_TEMP/npm-view-error"; then
+          if npm view "$PACKAGE_SPEC" --prefer-online --json >"$RUNNER_TEMP/npm-package.json" 2>"$RUNNER_TEMP/npm-view-error"; then
             node scripts/check-release-package.mjs "$RUNNER_TEMP/npm-package.json"
             echo "already_published=true" >>"$GITHUB_OUTPUT"
           elif grep -q "E404" "$RUNNER_TEMP/npm-view-error"; then
-            LATEST_VERSION="$(npm view "$PACKAGE_NAME" dist-tags.latest)"
+            LATEST_VERSION="$(npm view "$PACKAGE_NAME" dist-tags.latest --prefer-online)"
             node scripts/check-release-version.mjs "$PACKAGE_VERSION" "$LATEST_VERSION"
             echo "already_published=false" >>"$GITHUB_OUTPUT"
           else
@@ -84,43 +102,11 @@ jobs:
             exit 1
           fi
       - name: Publish package
-        if: steps.registry.outputs.already_published != 'true'
+        if: github.event_name == 'release' && steps.registry.outputs.already_published != 'true'
         run: npm publish "$PACKAGE_TARBALL" --ignore-scripts --provenance --access public
+      - name: Dry-run package publication
+        if: github.event_name == 'workflow_dispatch'
+        run: npm publish "$PACKAGE_TARBALL" --dry-run --ignore-scripts --provenance --access public
       - name: Verify package
-        run: |
-          set -euo pipefail
-          PACKAGE_NAME="$(node -p 'require("./package.json").name')"
-          PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
-          PACKAGE_SPEC="$PACKAGE_NAME@$PACKAGE_VERSION"
-          pending="package metadata"
-          for attempt in {1..12}; do
-            if npm view "$PACKAGE_SPEC" --json >"$RUNNER_TEMP/npm-package.json" 2>"$RUNNER_TEMP/npm-view-error"; then
-              set +e
-              node scripts/check-release-package.mjs "$RUNNER_TEMP/npm-package.json" --require-provenance
-              status=$?
-              set -e
-              if [[ "$status" -eq 0 ]]; then
-                LATEST_VERSION="$(npm view "$PACKAGE_NAME" dist-tags.latest)"
-                if [[ "$LATEST_VERSION" != "$PACKAGE_VERSION" ]]; then
-                  echo "npm latest points to $LATEST_VERSION instead of $PACKAGE_VERSION" >&2
-                  exit 1
-                fi
-                exit 0
-              fi
-              if [[ "$status" -ne 75 ]]; then
-                exit "$status"
-              fi
-              pending="provenance metadata"
-            elif grep -q "E404" "$RUNNER_TEMP/npm-view-error"; then
-              pending="package metadata"
-            else
-              cat "$RUNNER_TEMP/npm-view-error" >&2
-              exit 1
-            fi
-            if [[ "$attempt" -lt 12 ]]; then
-              echo "Waiting for $pending (attempt $attempt/12)"
-              sleep 5
-            fi
-          done
-          echo "$PACKAGE_SPEC did not expose $pending after 12 attempts" >&2
-          exit 1
+        if: github.event_name == 'release'
+        run: bash scripts/verify-release-package.sh

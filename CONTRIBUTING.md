@@ -60,6 +60,13 @@ and `src/version.ts` together, and move the changelog entries to the new version
 Verify CI on that exact `main` commit before creating its `vX.Y.Z` tag and
 publishing the GitHub Release. Never move an existing release tag.
 
+Before tagging, dispatch `publish.yml` on that exact `main` commit with `version`
+set to the package version and `dry_run: true`, and require a green result. This
+runs every release gate and smoke-installs the packed tarball without publishing.
+Manual dispatch rejects `dry_run: false`; only a published GitHub Release can
+publish to npm. Registry verification allows up to ten minutes for npm metadata
+and provenance to propagate, requesting fresh metadata on each attempt.
+
 The `Publish` workflow revalidates the release and publishes through npm trusted
 publishing. Its identity is `openclaw/openclaw-atif`, workflow `publish.yml`, with
 no GitHub environment. Do not add npm tokens or publish a real release locally.
