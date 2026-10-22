@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use fixed Node.js patches for build, CI, and release tooling to reject the disclosed eMudhra incident keys.
+
 ## 0.1.5 — 2026-10-20
 
 **Highlights:** More reliable native Codex exports and retained-bundle replay, patched development dependencies, and safer release verification.
