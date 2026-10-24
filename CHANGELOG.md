@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Update the development-only fast-uri override to 3.1.9 to address four URI parsing and normalization advisories.
 - Upgrade Vitest and V8 coverage together to 5.0.5 with Stryker 10.1.1's Vitest 5 test-selection fix, retaining the existing coverage and mutation thresholds.
 - Use fixed Node.js patches for build, CI, and release tooling to reject the disclosed eMudhra incident keys.
 
