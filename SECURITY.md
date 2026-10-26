@@ -8,7 +8,6 @@ Include the affected package version or commit, Node.js and OpenClaw versions,
 operating system, a minimal synthetic reproduction, and demonstrated impact.
 
 Relevant boundaries include:
-
 - output escaping its selected directory or losing owner-only permissions;
 - migration-on-copy modifying the original OpenClaw state;
 - unsafe local media paths or unintended network retrieval;

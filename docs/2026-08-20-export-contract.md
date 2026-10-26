@@ -17,7 +17,6 @@ Both commands call the same normalization, mapping, validation, and writer code.
 ## Outputs
 
 The output directory contains:
-
 - `trajectory.json`: one recursive ATIF-v1.8 document.
 - `receipt.json`: source, completeness, privacy, metric, and validation evidence.
 - `media/`: retained image and audio files, when present.

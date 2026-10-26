@@ -11,7 +11,6 @@ date: "2026-08-20"
 The first release consumes the documented `openclaw-trajectory` bundle schema v1.
 
 Required compatibility coverage includes:
-
 - OpenClaw 2026.7.1-2 with legacy JSONL storage.
 - OpenClaw 2026.8.1-beta.2 with SQLite storage.
 - A pinned current OpenClaw release.

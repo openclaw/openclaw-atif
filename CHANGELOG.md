@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Upgrade Biome to 2.6.2 and format Markdown with YAML frontmatter parsing enabled, retaining the existing validation gates.
 - Update the development-only fast-uri override to 3.1.9 to address four URI parsing and normalization advisories.
 - Upgrade Vitest and V8 coverage together to 5.0.5 with Stryker 10.1.1's Vitest 5 test-selection fix, retaining the existing coverage and mutation thresholds.
 - Use fixed Node.js patches for build, CI, and release tooling to reject the disclosed eMudhra incident keys.
@@ -11,7 +12,6 @@
 **Highlights:** More reliable native Codex exports and retained-bundle replay, patched development dependencies, and safer release verification.
 
 [npm 0.1.5](https://www.npmjs.com/package/@openclaw/openclaw-atif/v/0.1.5) · [tarball](https://registry.npmjs.org/@openclaw/openclaw-atif/-/openclaw-atif-0.1.5.tgz) · [integrity metadata](https://registry.npmjs.org/@openclaw%2Fopenclaw-atif/0.1.5) · [CI](https://github.com/openclaw/openclaw-atif/actions/workflows/ci.yml)
-
 - Recognize historical native Codex tool outcomes, retained running processes, and terminal-tool release metadata without changing their source fields or marking valid exports partial.
 - Canonicalize retained source staging so exports and replay work through temporary-directory aliases, including macOS temporary paths. Thanks @SebTardif.
 - Update fast-uri and brace-expansion to patched releases, clearing development dependency security advisories.
