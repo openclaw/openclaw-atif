@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Let publish-verification tests outlive their 30-second subprocess timeout so coverage and loaded runners do not fail at Vitest's five-second default.
+- Update Biome to 2.6.3 and remove the obsolete Vitest major-update block now that the Stryker-compatible Vitest 5 toolchain is in use.
 - Upgrade Biome to 2.6.2 and format Markdown with YAML frontmatter parsing enabled, retaining the existing validation gates.
 - Update setup-python to 7.1.0 in CI and publishing validation while retaining Python 3.12.
 - Update the development-only fast-uri override to 3.1.9 to address four URI parsing and normalization advisories.
