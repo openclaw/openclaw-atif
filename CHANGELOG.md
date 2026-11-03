@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep full weekly CodeQL analysis without duplicate main-push scans and isolate scheduled and manual runs while preserving PR analysis.
+
 - Let publish-verification tests outlive their 30-second subprocess timeout so coverage and loaded runners do not fail at Vitest's five-second default.
 - Update Biome to 2.6.3 and remove the obsolete Vitest major-update block now that the Stryker-compatible Vitest 5 toolchain is in use.
 - Upgrade Biome to 2.6.2 and format Markdown with YAML frontmatter parsing enabled, retaining the existing validation gates.
