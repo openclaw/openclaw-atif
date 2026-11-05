@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Patch development-tooling denial-of-service advisories with Minimatch 11.0.1 and qs 6.16.1 overrides.
+
+- Update Biome, TypeScript ESLint, and the paired Vitest/coverage tools; keep Node declarations on the supported Node.js 24 release line. Thanks @dependabot[bot].
+
 - Keep full weekly CodeQL analysis without duplicate main-push scans and isolate scheduled and manual runs while preserving PR analysis.
 
 - Let publish-verification tests outlive their 30-second subprocess timeout so coverage and loaded runners do not fail at Vitest's five-second default.
