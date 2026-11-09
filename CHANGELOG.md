@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Update CodeQL initialization and analysis together to the same pinned action revision. Thanks @dependabot[bot].
+
 - Patch development-tooling denial-of-service advisories with Minimatch 11.0.1 and qs 6.16.1 overrides.
 
 - Update Biome, TypeScript ESLint, and the paired Vitest/coverage tools; keep Node declarations on the supported Node.js 24 release line. Thanks @dependabot[bot].
