@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Update CodeQL initialization and analysis together to the same pinned action revision. Thanks @dependabot[bot].
+
 - Enable the Slophammer mutation gate explicitly for slophammer-ts 0.6.0 while retaining the separate Stryker mutation check, and apply Biome 2.6.5 Markdown formatting.
 
 - Patch development-tooling denial-of-service advisories with Minimatch 11.0.1 and qs 6.16.1 overrides.
