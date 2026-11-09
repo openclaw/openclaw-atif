@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Enable the Slophammer mutation gate explicitly for slophammer-ts 0.6.0 while retaining the separate Stryker mutation check, and apply Biome 2.6.5 Markdown formatting.
+
 - Patch development-tooling denial-of-service advisories with Minimatch 11.0.1 and qs 6.16.1 overrides.
 
 - Update Biome, TypeScript ESLint, and the paired Vitest/coverage tools; keep Node declarations on the supported Node.js 24 release line. Thanks @dependabot[bot].
@@ -21,6 +23,7 @@
 **Highlights:** More reliable native Codex exports and retained-bundle replay, patched development dependencies, and safer release verification.
 
 [npm 0.1.5](https://www.npmjs.com/package/@openclaw/openclaw-atif/v/0.1.5) · [tarball](https://registry.npmjs.org/@openclaw/openclaw-atif/-/openclaw-atif-0.1.5.tgz) · [integrity metadata](https://registry.npmjs.org/@openclaw%2Fopenclaw-atif/0.1.5) · [CI](https://github.com/openclaw/openclaw-atif/actions/workflows/ci.yml)
+
 - Recognize historical native Codex tool outcomes, retained running processes, and terminal-tool release metadata without changing their source fields or marking valid exports partial.
 - Canonicalize retained source staging so exports and replay work through temporary-directory aliases, including macOS temporary paths. Thanks @SebTardif.
 - Update fast-uri and brace-expansion to patched releases, clearing development dependency security advisories.
