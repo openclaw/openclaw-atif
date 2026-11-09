@@ -15,6 +15,7 @@ typescript:
       enabled: true
       min_tokens: 100
   mutation:
+    enabled: true
     targets:
       - src/atif/identity.ts
       - src/stable-json.ts
