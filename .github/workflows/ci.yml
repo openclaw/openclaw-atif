@@ -23,9 +23,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "24.22.1"
+          node-version: "24.22.3"
           cache: npm
-      - run: npm install --global npm@11.19.0 --ignore-scripts
+      - run: npm install --global npm@11.21.3 --ignore-scripts
       - run: npm ci
       - name: Install pinned migration dependency
         run: npm install --prefix "$RUNNER_TEMP/migration-openclaw" --ignore-scripts --omit=dev openclaw@2026.9.5
@@ -38,12 +38,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "24.22.1"
+          node-version: "24.22.3"
           cache: npm
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
-      - run: npm install --global npm@11.19.0 --ignore-scripts
+      - run: npm install --global npm@11.21.3 --ignore-scripts
       - run: npm ci
       - run: npm run check
       - run: npm run mutate
