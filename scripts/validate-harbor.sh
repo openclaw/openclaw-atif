@@ -2,7 +2,7 @@
 set -euo pipefail
 
 HARBOR_COMMIT=74cc6312018c349c6bd2400c89a0ac4983ac1085
-PYDANTIC_VERSION=2.12.5
+PYDANTIC_VERSION=2.14.3
 TEMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEMP_ROOT"' EXIT
 
