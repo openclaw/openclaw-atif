@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refresh Biome, ESLint, TypeScript ESLint, paired Vitest/coverage tooling, CodeQL, and the Node.js 24/npm 11 CI pins while preserving TypeScript 6 compatibility. Thanks @dependabot[bot].
+
 - Update CodeQL initialization and analysis together to the same pinned action revision. Thanks @dependabot[bot].
 
 - Enable the Slophammer mutation gate explicitly for slophammer-ts 0.6.0 while retaining the separate Stryker mutation check, and apply Biome 2.6.5 Markdown formatting.
