@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Update the Harbor fixture validator to Pydantic 2.14.3 without changing the pinned Harbor revision.
+
 - Refresh Biome, ESLint, TypeScript ESLint, paired Vitest/coverage tooling, CodeQL, and the Node.js 24/npm 11 CI pins while preserving TypeScript 6 compatibility. Thanks @dependabot[bot].
 
 - Update CodeQL initialization and analysis together to the same pinned action revision. Thanks @dependabot[bot].
