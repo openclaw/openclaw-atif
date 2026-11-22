@@ -202,7 +202,10 @@ function callsByAssistantEntry(
       function_name: name,
       arguments: converted.arguments,
     };
-    if (converted.extra) call.extra = converted.extra;
+    // OpenClaw emits Code Mode's nested calls under the assistant entry of their outer call.
+    const parent = readNonBlankString(event.data?.parentToolCallId);
+    const extra = { ...converted.extra, ...(parent ? { parent_tool_call_id: parent } : {}) };
+    if (Object.keys(extra).length > 0) call.extra = extra;
     const current = values.get(owner) ?? [];
     current.push(call);
     values.set(owner, current);

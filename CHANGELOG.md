@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Record `parent_tool_call_id` on tool calls that OpenClaw bundles mark with `parentToolCallId`, so Code Mode's nested calls keep their link to the outer `exec` call in standard ATIF steps.
+
 - Update the Harbor fixture validator to Pydantic 2.14.3 without changing the pinned Harbor revision.
 
 - Refresh Biome, ESLint, TypeScript ESLint, paired Vitest/coverage tooling, CodeQL, and the Node.js 24/npm 11 CI pins while preserving TypeScript 6 compatibility. Thanks @dependabot[bot].

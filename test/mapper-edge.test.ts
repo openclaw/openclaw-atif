@@ -288,6 +288,55 @@ describe("ATIF mapper edge cases", () => {
     expect(result.diagnostics.some((item) => item.code === "duplicate-tool-call-id")).toBe(true);
   });
 
+  it("maps nested Code Mode calls into the outer call's step with parent linkage", async () => {
+    const transcript = (seq: number, type: string, data: Record<string, unknown>) =>
+      event({
+        seq,
+        source: "transcript",
+        type,
+        sessionId: "session",
+        entryId: `e${String(seq)}`,
+        data,
+      });
+    const events = [
+      transcript(1, "assistant.message", { message: { content: "run script" } }),
+      transcript(2, "tool.call", { assistantEntryId: "e1", toolCallId: "exec", name: "exec" }),
+      transcript(3, "tool.call", {
+        assistantEntryId: "e1",
+        parentToolCallId: "exec",
+        toolCallId: "nested",
+        name: "read",
+        arguments: { path: "inbox.json" },
+      }),
+      transcript(4, "tool.result", {
+        parentToolCallId: "exec",
+        message: { role: "toolResult", toolCallId: "nested", toolName: "read", content: "mail" },
+      }),
+      transcript(5, "tool.result", { message: { toolCallId: "exec", content: "{}" } }),
+    ];
+    const result = await mapFamilyToAtif(family(events));
+    const [step] = validateAtifTrajectory(result.trajectory).steps;
+    expect(step?.tool_calls).toEqual([
+      {
+        tool_call_id: "exec",
+        function_name: "exec",
+        arguments: {},
+        extra: { arguments_status: "unavailable" },
+      },
+      {
+        tool_call_id: "nested",
+        function_name: "read",
+        arguments: { path: "inbox.json" },
+        extra: { parent_tool_call_id: "exec" },
+      },
+    ]);
+    expect(step?.observation?.results.map((item) => [item.source_call_id, item.content])).toEqual([
+      ["nested", "mail"],
+      ["exec", "{}"],
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
   it("omits and diagnoses tool calls without source identifiers", async () => {
     const events = [
       event({
