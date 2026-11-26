@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.6 — 2026-11-26
+
+**Highlights:** Preserve nested tool-call lineage in ATIF exports and refresh release validation tooling.
+
 - Record `parent_tool_call_id` on tool calls that OpenClaw bundles mark with `parentToolCallId`, so Code Mode's nested calls keep their link to the outer `exec` call in standard ATIF steps.
 
 - Update the Harbor fixture validator to Pydantic 2.14.3 without changing the pinned Harbor revision.
