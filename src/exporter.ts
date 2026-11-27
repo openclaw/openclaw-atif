@@ -1,5 +1,5 @@
 /* eslint-disable complexity -- Export and cleanup states must remain explicit. */
-import { chmod, mkdtemp, realpath, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mapFamilyToAtif } from "./atif/mapper.js";
@@ -114,9 +114,12 @@ export async function exportOpenClawFamily(options: ExportOptions): Promise<Expo
           "OpenClaw does not support public trajectory export; use explicit migration-on-copy inputs",
         );
       }
+      // Track the private copy before preparation can fail; only public bundles may be retained.
+      legacyCopyPath = join(stagingRoot, "migration");
+      await mkdir(legacyCopyPath, { mode: 0o700 });
       const migrated = await prepareLegacyMigrationCopy({
         sourceStateDir: options.legacyStateDir,
-        stagingRoot,
+        stagingRoot: legacyCopyPath,
         executable: options.migrationExecutable,
         command: options.command,
       });
@@ -124,7 +127,6 @@ export async function exportOpenClawFamily(options: ExportOptions): Promise<Expo
       capability = migrated.capability;
       stateDir = migrated.stateDir;
       command = migrated.command;
-      legacyCopyPath = migrated.cleanupRoot;
       legacyMigration = migrated.receipt;
     }
     const captured = await captureOpenClawFamily({
@@ -172,7 +174,7 @@ export async function exportOpenClawFamily(options: ExportOptions): Promise<Expo
       cleanupError = error;
     }
   }
-  if (!options.keepSourceBundles || !result) {
+  if (!options.keepSourceBundles) {
     try {
       await rm(stagingRoot, { recursive: true, force: true });
     } catch (error) {
@@ -180,7 +182,14 @@ export async function exportOpenClawFamily(options: ExportOptions): Promise<Expo
     }
   }
   const finalError = combineExportErrors(primaryError, cleanupError);
-  if (finalError) throw finalError;
+  if (finalError) {
+    if (options.keepSourceBundles) {
+      throw new Error(`${finalError.message}\nSource bundles retained at: ${stagingRoot}`, {
+        cause: finalError,
+      });
+    }
+    throw finalError;
+  }
   if (!result) throw new Error("OpenClaw export did not produce a result");
   return result;
 }
