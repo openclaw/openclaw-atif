@@ -51,6 +51,38 @@ async function costs(root: Record<string, unknown>[], child: Record<string, unkn
 }
 
 describe("cost completeness", () => {
+  it.each([false, true])("keeps explicitly unavailable usage unknown (child=%s)", async (child) => {
+    const measured = { input: 5, output: 2, cacheRead: 0, cacheWrite: 0, cost: { total: 0.5 } };
+    const zero = {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      cost: { total: 0 },
+      usageReport: { state: "available" },
+    };
+    const unavailable = { ...zero, usageReport: { state: "unavailable" } };
+    const { mapped, receipt } = await costs(
+      child ? [measured, zero] : [measured, zero, unavailable],
+      child ? [unavailable] : [],
+    );
+    expect(mapped.trajectory.steps[1]).toMatchObject({ metrics: { cost_usd: 0 } });
+    expect(mapped.nodeMetrics.get(child ? "child" : "root")).not.toHaveProperty("total_cost_usd");
+    expect(receipt.familyMetrics).not.toHaveProperty("costUsd");
+    expect(receipt.accounting).toMatchObject({
+      family: {
+        messages: 3,
+        components: {
+          input: { observed: 2, total: 5 },
+          output: { observed: 2, total: 2 },
+          cacheRead: { observed: 2, total: 0 },
+          cacheWrite: { observed: 2, total: 0 },
+          costUsd: { observed: 2, total: 0.5 },
+        },
+      },
+    });
+  });
+
   it("separates complete capture from missing accounting observations", async () => {
     const { receipt } = await costs([{ input: 0, output: 0, cost: 0 }, {}], [{ cacheWrite: 5 }]);
     const accounting = receipt.accounting;

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep explicitly unavailable OpenClaw usage out of observed token and cost totals; preserve measured zeros and mark incomplete trajectory and family costs.
+
 - Honor `--keep-source-bundles` on failed exports and report the retained path for diagnosis, while still removing temporary private migration state.
 
 ## 0.1.6 — 2026-11-26

@@ -41,6 +41,7 @@
   },
   "final_metrics": {
     "extra": {
+      "cost_incomplete": true,
       "scope": "own-trajectory-only"
     },
     "total_completion_tokens": 1,
