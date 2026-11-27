@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import {
   chmod,
   cp,
@@ -12,7 +13,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { captureOpenClawFamily } from "../src/capture/family.js";
 import { convertOpenClawBundles, exportOpenClawFamily } from "../src/exporter.js";
@@ -97,7 +98,7 @@ process.exit(2);
 }
 
 describe("export temporary-directory aliases", () => {
-  it("retains replayable bundles and cleans failed exports through a temporary-directory alias", async () => {
+  it("retains replayable bundles through a temporary-directory alias", async () => {
     const fake = await fakeOpenClaw();
     const temporary = join(fake.root, "temporary");
     const alias = join(fake.root, "alias");
@@ -125,19 +126,67 @@ describe("export temporary-directory aliases", () => {
       });
       expect(replay.trajectory).toEqual(original.trajectory);
       expect(replay.receipt).toEqual(original.receipt);
-      const beforeFailure = await readdir(temporary);
-      expect(beforeFailure).toHaveLength(1);
-      await expect(
-        exportOpenClawFamily({
-          executable: join(fake.root, "missing-openclaw"),
-          sessionKey: "agent:main:main",
-          output: join(fake.root, "failed"),
-          keepSourceBundles: true,
-        }),
-      ).rejects.toThrow();
-      expect(await readdir(temporary)).toEqual(beforeFailure);
     } finally {
       vi.unstubAllEnvs();
+      await rm(fake.root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("failed source retention", () => {
+  it.each([false, true])("preserves malformed capture only on request (%s)", async (keep) => {
+    const fake = await fakeOpenClaw();
+    const temporary = join(fake.root, "temporary");
+    const malformed = '{"data":{"text":"unfinished';
+    try {
+      await mkdir(temporary);
+      await writeFile(join(fake.bundles, "root", "events.jsonl"), malformed);
+      const output = join(fake.root, "output");
+      const result = spawnSync(
+        process.execPath,
+        [
+          resolve("dist/cli-main.js"),
+          "export",
+          "--openclaw",
+          fake.script,
+          "--session-key",
+          "agent:main:main",
+          "--output",
+          output,
+          ...(keep ? ["--keep-source-bundles"] : []),
+        ],
+        {
+          encoding: "utf8",
+          env: { ...process.env, TMPDIR: temporary, TEMP: temporary, TMP: temporary },
+        },
+      );
+      expect(result.status, result.stderr).toBe(1);
+      expect(result.stderr).toContain("Invalid events.jsonl row 1");
+      expect(result.stdout).toBe("");
+      await expect(stat(output)).rejects.toThrow();
+      const entries = await readdir(temporary);
+      expect(entries).toHaveLength(keep ? 1 : 0);
+      if (keep) {
+        const [entry] = entries;
+        if (!entry) throw new Error("Missing retained failed capture");
+        const retained = await realpath(join(temporary, entry));
+        expect(result.stderr).toContain(`Source bundles retained at: ${retained}`);
+        expect((await stat(retained)).mode & 0o777).toBe(0o700);
+        expect(
+          await readFile(
+            join(
+              retained,
+              "attempt-1",
+              ".openclaw",
+              "trajectory-exports",
+              "session-0001",
+              "events.jsonl",
+            ),
+            "utf8",
+          ),
+        ).toBe(malformed);
+      }
+    } finally {
       await rm(fake.root, { recursive: true, force: true });
     }
   });
@@ -323,30 +372,6 @@ describe("captureOpenClawFamily", () => {
     ).rejects.toThrow("sessionKey does not match");
   });
 
-  it("uses explicit migration-on-copy when the source executable lacks export", async () => {
-    const fake = await fakeOpenClaw();
-    const legacy = join(fake.root, "legacy");
-    await (await import("node:fs/promises")).mkdir(legacy);
-    await writeFile(join(legacy, "sessions.json"), "{}\n");
-    const source = join(fake.root, "old-openclaw.mjs");
-    await writeFile(
-      source,
-      '#!/usr/bin/env node\nif (process.argv[2] === "--version") { console.log("old"); process.exit(0); } process.exit(2);\n',
-    );
-    await chmod(source, 0o700);
-    const result = await exportOpenClawFamily({
-      executable: source,
-      migrationExecutable: fake.script,
-      migrateCopy: true,
-      legacyStateDir: legacy,
-      sessionKey: "agent:main:main",
-      output: join(fake.root, "migrated-output"),
-      command: { env: { ...process.env, BUNDLE_ROOT: fake.bundles } },
-    });
-    expect(result.status).toBe("complete");
-    expect(result.receipt.legacyMigration?.commands).toHaveLength(7);
-  });
-
   it("rejects unsupported export without explicit migration inputs", async () => {
     const fake = await fakeOpenClaw();
     const source = join(fake.root, "old-openclaw.mjs");
@@ -396,4 +421,56 @@ describe("captureOpenClawFamily", () => {
       }),
     ).rejects.toThrow("not found");
   });
+});
+
+describe("migration source retention", () => {
+  it.each([false, true])(
+    "cleans private migration state with retained bundles (failure=%s)",
+    async (fail) => {
+      const fake = await fakeOpenClaw();
+      try {
+        const legacy = join(fake.root, "legacy");
+        const temporary = join(fake.root, "temporary");
+        await mkdir(legacy);
+        await mkdir(temporary);
+        await writeFile(join(legacy, "sessions.json"), "{}\n");
+        const source = join(fake.root, "old-openclaw.mjs");
+        await writeFile(
+          source,
+          '#!/usr/bin/env node\nif (process.argv[2] === "--version") { console.log("old"); process.exit(0); } process.exit(2);\n',
+          { mode: 0o700 },
+        );
+        vi.stubEnv("TMPDIR", temporary);
+        vi.stubEnv("TEMP", temporary);
+        vi.stubEnv("TMP", temporary);
+        const exported = exportOpenClawFamily({
+          executable: source,
+          migrationExecutable: fail ? source : fake.script,
+          migrateCopy: true,
+          legacyStateDir: legacy,
+          sessionKey: "agent:main:main",
+          output: join(fake.root, "migrated-output"),
+          keepSourceBundles: true,
+        });
+        if (fail) {
+          await expect(exported).rejects.toThrow("does not support public trajectory export");
+        } else {
+          const result = await exported;
+          expect(result.status).toBe("complete");
+          expect(result.receipt.legacyMigration?.commands).toHaveLength(7);
+        }
+        const roots = await readdir(temporary);
+        expect(roots).toHaveLength(1);
+        const [root] = roots;
+        if (!root) throw new Error("Missing retained staging");
+        expect((await readdir(join(temporary, root))).sort()).toEqual(
+          fail ? [] : ["attempt-1", "graph.json"],
+        );
+        expect(await readFile(join(legacy, "sessions.json"), "utf8")).toBe("{}\n");
+      } finally {
+        vi.unstubAllEnvs();
+        await rm(fake.root, { recursive: true, force: true });
+      }
+    },
+  );
 });

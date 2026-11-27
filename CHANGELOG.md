@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Honor `--keep-source-bundles` on failed exports and report the retained path for diagnosis, while still removing temporary private migration state.
+
 ## 0.1.6 — 2026-11-26
 
 **Highlights:** Preserve nested tool-call lineage in ATIF exports and refresh release validation tooling.

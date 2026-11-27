@@ -27,7 +27,7 @@ Export options:
   --migrate-copy                Migrate a private copy when source export is unavailable
   --legacy-state-dir <path>     Legacy state copied for migration
   --migration-openclaw <path>   Official migration-capable OpenClaw executable
-  --keep-source-bundles         Retain owner-only captured public bundles
+  --keep-source-bundles         Retain owner-only public bundles, including failed exports
 
 Shared options:
   --require-complete            Reject partial output

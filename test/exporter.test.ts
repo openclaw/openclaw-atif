@@ -57,7 +57,7 @@ describe("convertOpenClawBundles", () => {
     expect(error?.message).toContain("cleanup failed");
     expect((error as AggregateError).errors).toHaveLength(2);
   });
-  it("cleans failed staging even when source retention was requested", async () => {
+  it("cleans failed staging by default", async () => {
     const root = await mkdtemp(join(tmpdir(), "openclaw-atif-cleanup-"));
     vi.stubEnv("TMPDIR", root);
     vi.stubEnv("TEMP", root);
@@ -68,7 +68,6 @@ describe("convertOpenClawBundles", () => {
           executable: join(root, "missing-openclaw-executable"),
           sessionKey: "agent:main:main",
           output: join(root, "unused-output"),
-          keepSourceBundles: true,
         }),
       ).rejects.toThrow();
       expect(await readdir(root)).toEqual([]);

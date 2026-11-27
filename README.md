@@ -74,6 +74,11 @@ to the chosen private archive before deleting the environment. Replay it with:
 openclaw-atif convert --graph retained/graph.json --bundle-root retained --output replay
 ```
 
+If export fails, the same flag keeps captured public bundles and reports the canonical
+staging path in the error. These files can contain session content; remove them when
+diagnosis is complete. An incomplete capture may lack `graph.json` and cannot be
+converted directly. Temporary private migration state is always cleaned up.
+
 Replay verifies the retained source hashes and preserves partial capture;
 relocation does not require the original OpenClaw state. Use the same exporter
 build for reproducibility. Hashes detect changed bytes, not forged evidence.
