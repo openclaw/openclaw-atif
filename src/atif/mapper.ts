@@ -1,6 +1,11 @@
 /* eslint-disable complexity -- Source-format dispatch is intentionally explicit. */
 
-import { type NodeUsageSummary, summarizeUsage, type UsageObservation } from "../accounting.js";
+import {
+  type NodeUsageSummary,
+  summarizeUsage,
+  type UsageObservation,
+  usageIsUnavailable,
+} from "../accounting.js";
 import { isAcpListingRow } from "../capture/relationships.js";
 import type { Diagnostic } from "../diagnostics.js";
 import {
@@ -133,9 +138,7 @@ function metricNumber(value: unknown): number | undefined {
   return number !== undefined && number >= 0 ? number : undefined;
 }
 
-function metricsFromMessage(message: Record<string, unknown>): AtifMetrics | undefined {
-  const usage = asRecord(message.usage);
-  if (!usage) return undefined;
+function metricsFromUsage(usage: Record<string, unknown>): AtifMetrics | undefined {
   const input = metricNumber(usage.input);
   const output = metricNumber(usage.output);
   const cacheRead = metricNumber(usage.cacheRead);
@@ -259,7 +262,10 @@ async function messageStep(
   if (event.type !== "assistant.message") return;
   const toolCalls = event.entryId ? calls.get(event.entryId) : undefined;
   const stepModel = modelName(message) ?? state.modelName;
-  state.usage.push({ model: stepModel ?? null, usage: asRecord(message.usage) ?? {} });
+  const usage = asRecord(message.usage) ?? {};
+  const usageUnavailable = usageIsUnavailable(usage);
+  state.usage.push({ model: stepModel ?? null, usage });
+  const metrics = usageUnavailable ? undefined : metricsFromUsage(usage);
   const reasoningEffort =
     readNonBlankString(message.thinkingLevel) ??
     readNonBlankString(message.reasoningEffort) ??
@@ -274,7 +280,7 @@ async function messageStep(
       ? { reasoning_content: reasoningContent(message.content) }
       : {}),
     ...(toolCalls && toolCalls.length > 0 ? { tool_calls: toolCalls } : {}),
-    ...(metricsFromMessage(message) ? { metrics: metricsFromMessage(message) } : {}),
+    ...(metrics ? { metrics } : {}),
     // Transcript assistant entries can be local mirrors, not model calls.
     // The public bundle does not establish a per-entry LLM call count.
     extra: {
@@ -282,6 +288,7 @@ async function messageStep(
         entry_id: event.entryId ?? null,
         stop_reason: readString(message.stopReason) ?? null,
         error_message: readString(message.errorMessage) ?? null,
+        ...(usageUnavailable ? { usage_unavailable: true } : {}),
       },
     },
   });
@@ -461,8 +468,9 @@ function finalMetrics(steps: readonly AtifStep[]): AtifFinalMetrics {
   let unpricedUsage = false;
   for (const step of steps) {
     if (
-      step.metrics?.cost_usd === undefined &&
-      ((step.metrics?.prompt_tokens ?? 0) > 0 || (step.metrics?.completion_tokens ?? 0) > 0)
+      asRecord(step.extra?.openclaw)?.usage_unavailable === true ||
+      (step.metrics?.cost_usd === undefined &&
+        ((step.metrics?.prompt_tokens ?? 0) > 0 || (step.metrics?.completion_tokens ?? 0) > 0))
     )
       unpricedUsage = true;
     if (step.metrics?.prompt_tokens !== undefined) {
@@ -488,7 +496,7 @@ function finalMetrics(steps: readonly AtifStep[]): AtifFinalMetrics {
     ...(observedCompletion ? { total_completion_tokens: completion } : {}),
     ...(observedCached ? { total_cached_tokens: cached } : {}),
     ...(observedCost && !unpricedUsage ? { total_cost_usd: cost } : {}),
-    extra: { scope: "own-trajectory-only" },
+    extra: { scope: "own-trajectory-only", ...(unpricedUsage ? { cost_incomplete: true } : {}) },
   };
 }
 

@@ -48,6 +48,10 @@ function mergeSummary(target: UsageSummary, source: UsageSummary): void {
   }
 }
 
+export function usageIsUnavailable(usage: Record<string, unknown>): boolean {
+  return asRecord(usage.usageReport)?.state === "unavailable";
+}
+
 function observeUsage(summary: UsageSummary, usage: Record<string, unknown>): void {
   summary.messages += 1;
   const values: Record<string, unknown> = {
@@ -68,7 +72,7 @@ export function summarizeUsage(observations: readonly UsageObservation[]): NodeU
   const models = new Map<string | null, ModelUsageSummary>();
   for (const { model, usage } of observations) {
     const summary = models.get(model) ?? { model, ...emptySummary() };
-    observeUsage(summary, usage);
+    observeUsage(summary, usageIsUnavailable(usage) ? {} : usage);
     models.set(model, summary);
   }
   const total = emptySummary();

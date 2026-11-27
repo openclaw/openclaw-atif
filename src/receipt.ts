@@ -39,9 +39,7 @@ export function buildReceipt(params: {
   const familyMetrics: MetricTotals = { steps: 0 };
   for (const metrics of params.nodeMetrics.values()) addMetrics(familyMetrics, metrics);
   const unpricedUsage = [...params.nodeMetrics.values()].some(
-    (metrics) =>
-      metrics.total_cost_usd === undefined &&
-      ((metrics.total_prompt_tokens ?? 0) > 0 || (metrics.total_completion_tokens ?? 0) > 0),
+    (metrics) => metrics.extra?.cost_incomplete === true,
   );
   if (unpricedUsage) delete familyMetrics.costUsd;
   const trajectorySha256 = createHash("sha256")
